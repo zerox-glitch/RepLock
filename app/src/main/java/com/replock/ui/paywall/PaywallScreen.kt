@@ -148,7 +148,7 @@ private fun PlanCard(
     onClick: () -> Unit,
 ) {
     Card(
-        Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
         colors = CardDefaults.cardColors(
             containerColor = if (selected) ElectricGreen.copy(alpha = 0.12f) else RepSurface,

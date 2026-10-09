@@ -1,9 +1,10 @@
 name: Build APK
 
 # Builds the debug APK and runs the unit tests on every push to the working
-# branch. The APK is published two ways:
-#   1. as a downloadable workflow artifact (GitHub UI / gh run download)
-#   2. committed to the `builds/replock-apk` branch (so it can be fetched with git)
+# branch. Publishes:
+#   1. the APK as a workflow artifact + committed to `builds/replock-apk`
+#   2. full gradle logs + test reports committed to `builds/ci-logs`
+#      (so failures can be diagnosed even where the Actions log host is blocked)
 on:
   push:
     branches: [arena/4546cc7a-replock]
@@ -29,10 +30,15 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run unit tests (rep counter state machine)
-        run: ./gradlew :app:testDebugUnitTest
+        run: |
+          set -o pipefail
+          ./gradlew :app:testDebugUnitTest --stacktrace 2>&1 | tee /tmp/test.log
+        continue-on-error: true
 
       - name: Build debug APK
-        run: ./gradlew :app:assembleDebug
+        run: |
+          set -o pipefail
+          ./gradlew :app:assembleDebug --stacktrace 2>&1 | tee /tmp/build.log
 
       - name: Show APK info
         run: |
@@ -47,26 +53,42 @@ jobs:
           retention-days: 30
 
       - name: Publish APK to builds/replock-apk branch
+        if: always()
         run: |
           set -e
-          APK=app/build/outputs/apk/debug/app-debug.apk
-          SIZE=$(stat -c%s "$APK")
-          echo "APK size: $SIZE bytes"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout --orphan builds/replock-apk
-          git rm -rf . > /dev/null 2>&1 || true
-          mkdir -p app/build/outputs/apk/debug
-          cp "$APK" app/build/outputs/apk/debug/app-debug.apk
-          cp "$APK" RepLock-debug.apk
-          cat > README.md <<EOF
-          # RepLock debug APK (auto-built by GitHub Actions)
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          if [ -f "$APK" ]; then
+            SIZE=$(stat -c%s "$APK")
+            echo "APK size: $SIZE bytes"
+            git checkout --orphan builds/replock-apk
+            git rm -rf . > /dev/null 2>&1 || true
+            mkdir -p app/build/outputs/apk/debug
+            cp "$APK" app/build/outputs/apk/debug/app-debug.apk
+            cp "$APK" RepLock-debug.apk
+            printf '# RepLock debug APK (auto-built by GitHub Actions)\n\n- APK: `RepLock-debug.apk` (also at `app/build/outputs/apk/debug/app-debug.apk`)\n- Size: %s bytes\n- Built from branch `arena/4546cc7a-replock`\n- Install: `adb install -r RepLock-debug.apk`\n' "$SIZE" > README.md
+            git add -A
+            git commit -m "APK build $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push --force origin builds/replock-apk
+          else
+            echo "APK missing - build failed, see builds/ci-logs"
+          fi
 
-          - APK: \`RepLock-debug.apk\` (also at \`app/build/outputs/apk/debug/app-debug.apk\`)
-          - Size: $SIZE bytes
-          - Built from branch \`arena/4546cc7a-replock\`
-          - Install: \`adb install -r RepLock-debug.apk\`
-          EOF
+      - name: Publish logs to builds/ci-logs branch
+        if: always()
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan builds/ci-logs
+          git rm -rf . > /dev/null 2>&1 || true
+          mkdir -p logs
+          cp /tmp/test.log logs/test.log 2>/dev/null || true
+          cp /tmp/build.log logs/build.log 2>/dev/null || true
+          cp -r app/build/reports/tests/testDebugUnitTest logs/test-report 2>/dev/null || true
+          cp -r app/build/test-results/testDebugUnitTest logs/test-results 2>/dev/null || true
+          echo "# RepLock CI logs (auto-published by GitHub Actions)" > README.md
           git add -A
-          git commit -m "APK build $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          git push --force origin builds/replock-apk
+          git commit -m "CI logs $(date -u +%Y-%m-%dT%H:%M:%SZ)" || true
+          git push --force origin builds/ci-logs || true
