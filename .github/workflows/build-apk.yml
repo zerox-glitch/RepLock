@@ -33,7 +33,6 @@ jobs:
         run: |
           set -o pipefail
           ./gradlew :app:testDebugUnitTest --stacktrace 2>&1 | tee /tmp/test.log
-        continue-on-error: true
 
       - name: Build debug APK
         run: |
@@ -79,15 +78,7 @@ jobs:
               git commit -m "APK build $(date -u +%Y-%m-%dT%H:%M:%SZ)"
               git push --force origin builds/replock-apk
             else
-              echo "APK missing - build failed, see builds/ci-logs"
-              git checkout --orphan builds/replock-apk
-              git rm -rf . > /dev/null 2>&1 || true
-              git clean -fdxq || true
-              echo "# RepLock debug APK - build failed" > README.md
-              echo "See the builds/ci-logs branch for logs." >> README.md
-              git add -A
-              git commit -m "APK build failed $(date -u +%Y-%m-%dT%H:%M:%SZ)" || true
-              git push --force origin builds/replock-apk || true
+              echo "APK missing - build failed, see builds/ci-logs (last good APK branch left untouched)"
             fi
           } 2>&1 | tee /tmp/publish-apk.log
 
