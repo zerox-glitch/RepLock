@@ -14,21 +14,21 @@ import androidx.compose.ui.Modifier
 import com.replock.data.SettingsDataStore
 import com.replock.ui.navigation.RepLockNavHost
 import com.replock.ui.onboarding.OnboardingScreen
-import kotlinx.coroutines.flow.first
 
 /**
  * Root composable: brief splash while settings load, then onboarding until
  * completed, then the main app.
  *
- * Note: `null` here means "settings not loaded yet" — the onboarding flag
- * itself is non-null (defaults to false), so a fresh install correctly lands
- * on onboarding instead of spinning forever.
+ * `null` means "settings not loaded yet". The flow itself is non-null
+ * (defaults to false), so a fresh install lands on onboarding — and because
+ * we COLLECT the flow (not read it once), completing onboarding flips the
+ * root to the main app immediately.
  */
 @Composable
 fun RepLockRoot(settings: SettingsDataStore) {
     var onboardingDone by remember { mutableStateOf<Boolean?>(null) }
     LaunchedEffect(Unit) {
-        onboardingDone = settings.onboardingDoneFlow.first()
+        settings.onboardingDoneFlow.collect { onboardingDone = it }
     }
     when (onboardingDone) {
         null -> Box(Modifier.fillMaxSize()) {
