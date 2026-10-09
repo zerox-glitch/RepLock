@@ -62,6 +62,12 @@ class RepLockRepository(private val db: AppDatabase) {
 
     fun repsSince(millis: Long): Flow<Int> = repSessionDao.totalRepsSince(millis)
 
+    /** Individual rep sessions since [millis] (oldest first) — used for charts. */
+    fun repSessionsSince(millis: Long): Flow<List<RepSessionEntity>> = repSessionDao.sessionsSince(millis)
+
+    /** Unlock events since [millis] (oldest first) — used for charts. */
+    fun unlockEventsSince(millis: Long): Flow<List<UnlockEventEntity>> = unlockEventDao.eventsSince(millis)
+
     /** Consecutive days with at least one rep session, ending today (or yesterday if today has none yet). */
     suspend fun currentStreakDays(): Int {
         val timestamps = repSessionDao.allTimestamps()
@@ -109,6 +115,11 @@ class RepLockRepository(private val db: AppDatabase) {
     companion object {
         fun startOfTodayMillis(): Long =
             LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+        /** Start of the local day [days]-1 days ago, i.e. the left edge of a [days]-day window ending today. */
+        fun startOfDaysAgoMillis(days: Int): Long =
+            LocalDate.now().minusDays((days - 1).toLong()).atStartOfDay(ZoneId.systemDefault())
+                .toInstant().toEpochMilli()
 
         fun startOfWeekMillis(): Long =
             LocalDate.now().with(DayOfWeek.MONDAY).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()

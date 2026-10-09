@@ -4,8 +4,8 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -47,13 +47,11 @@ import com.replock.ui.components.PillBadge
 import com.replock.ui.components.StatCard
 import com.replock.ui.theme.ElectricGreen
 import com.replock.ui.theme.LockedRed
+import com.replock.ui.theme.PremiumGold
 import com.replock.ui.theme.RepBlack
 import com.replock.ui.theme.RepGray
 import com.replock.util.PermissionUtils
 import com.replock.util.formatUnlockWindow
-
-/** Gold used for the PRO badge (matches the premium accent in the design). */
-private val ProGold = Color(0xFFFFC857)
 
 @Composable
 fun HomeScreen(
@@ -61,6 +59,7 @@ fun HomeScreen(
     onOpenAppPicker: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
     onOpenStats: () -> Unit = {},
+    onOpenPaywall: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val blockingEnabled by viewModel.blockingEnabled.collectAsState()
@@ -69,6 +68,7 @@ fun HomeScreen(
     val isPro by viewModel.isPro.collectAsState()
     val blockedCount by viewModel.enabledBlockedCount.collectAsState()
     val windowMinutes by viewModel.unlockWindowMinutes.collectAsState()
+    val repsLast7 by viewModel.repsLast7.collectAsState()
 
     val hasCamera = ContextCompat.checkSelfPermission(
         context, Manifest.permission.CAMERA
@@ -88,7 +88,7 @@ fun HomeScreen(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        // Header: wordmark + plan badge
+        // Header: wordmark + premium link
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "REPLOCK",
@@ -97,11 +97,15 @@ fun HomeScreen(
                 fontWeight = FontWeight.Black,
                 modifier = Modifier.weight(1f),
             )
-            if (isPro) {
-                PillBadge("PRO", ProGold)
-            } else {
-                PillBadge("FREE PLAN", RepGray)
-            }
+            Text(
+                if (isPro) "Pro member" else "Premium status",
+                color = if (isPro) PremiumGold else RepGray,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .clickable(onClick = onOpenPaywall)
+                    .padding(vertical = 6.dp, horizontal = 4.dp),
+            )
         }
 
         // Status card: big on/off state + switch
@@ -150,9 +154,14 @@ fun HomeScreen(
             }
         }
 
-        // Today: reps + unlocks (with a ring showing free-tier usage)
+        // Today: reps (sparkline) + unlocks (ring)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            StatCard("Reps today", "$repsToday", Modifier.weight(1f))
+            StatCard(
+                label = "Reps today",
+                value = "$repsToday",
+                modifier = Modifier.weight(1f),
+                sparkline = repsLast7,
+            )
             GlassCard(Modifier.weight(1f)) {
                 Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -163,17 +172,21 @@ fun HomeScreen(
                             color = ElectricGreen,
                         )
                         Spacer(Modifier.height(2.dp))
-                        Text(if (isPro) "Unlocks (Pro)" else "Unlocks", color = RepGray, fontSize = 13.sp)
+                        Text(
+                            if (isPro) "Unlocks · Pro" else "Unlocks today",
+                            color = RepGray,
+                            fontSize = 13.sp,
+                        )
                     }
                     MiniRing(
                         progress = if (isPro) 1f else unlocksToday / 3f,
-                        modifier = Modifier.size(40.dp),
+                        modifier = Modifier.size(44.dp),
                     )
                 }
             }
         }
 
-        // Blocklist + window
+        // Blocklist
         GlassCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp)) {
                 Text("Blocked apps", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 16.sp)
@@ -200,7 +213,7 @@ fun HomeScreen(
             }
         }
 
-        // How to use
+        // How it works
         GlassCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp)) {
                 Text("How it works", fontWeight = FontWeight.Bold, color = ElectricGreen, fontSize = 16.sp)

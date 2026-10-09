@@ -22,4 +22,7 @@ interface UnlockEventDao {
 
     @Query("SELECT COUNT(*) FROM unlock_events")
     fun totalCount(): Flow<Int>
+
+    @Query("SELECT * FROM unlock_events WHERE timestamp >= :since ORDER BY timestamp ASC")
+    fun eventsSince(since: Long): Flow<List<UnlockEventEntity>>
 }

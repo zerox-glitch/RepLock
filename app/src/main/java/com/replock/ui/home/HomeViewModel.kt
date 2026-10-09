@@ -7,11 +7,14 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.replock.RepLockApp
 import com.replock.data.SettingsDataStore
+import com.replock.repository.RepLockRepository
 import com.replock.service.LockMonitorService
 import com.replock.util.PermissionUtils
+import com.replock.util.bucketByDay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -23,9 +26,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     init {
         // Safety net: make sure the monitor service is running whenever Home is
         // shown with blocking enabled and permissions granted. Covers the first
-        // launch right after onboarding (where the onboarding screen's own
-        // start call could be cancelled by composition disposal) and any
-        // process restart. Starting an already-running service is a no-op.
+        // launch right after onboarding and any process restart. Starting an
+        // already-running service is a no-op.
         viewModelScope.launch {
             if (settings.blockingEnabledFlow.first() &&
                 PermissionUtils.hasAllBlockingPermissions(getApplication())
@@ -50,6 +52,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
     val unlockWindowMinutes: StateFlow<Int> = settings.unlockWindowMinutesFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsDataStore.DEFAULT_UNLOCK_WINDOW_MINUTES)
+
+    /** Reps per day for the last 7 days (oldest first) — drives the Reps-today sparkline. */
+    val repsLast7: StateFlow<List<Int>> = repository
+        .repSessionsSince(RepLockRepository.startOfDaysAgoMillis(7))
+        .map { sessions -> bucketByDay(sessions.map { it.timestamp to it.reps }, 7) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun setBlockingEnabled(enabled: Boolean) {
         viewModelScope.launch {

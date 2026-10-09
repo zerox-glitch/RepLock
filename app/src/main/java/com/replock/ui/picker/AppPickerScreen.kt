@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -47,13 +49,15 @@ import com.replock.data.model.InstalledApp
 import com.replock.ui.components.GlassCard
 import com.replock.ui.components.PillBadge
 import com.replock.ui.theme.ElectricGreen
+import com.replock.ui.theme.PremiumGold
 import com.replock.ui.theme.RepBlack
 import com.replock.ui.theme.RepGray
 import com.replock.ui.theme.RepSurfaceVariant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private val ProGold = Color(0xFFFFC857)
+/** Which rows the list shows. */
+private enum class ListFilter(val label: String) { All("All"), Blocked("Blocked"), Open("Open") }
 
 @Composable
 fun AppPickerScreen(
@@ -64,6 +68,7 @@ fun AppPickerScreen(
     val blockedApps by viewModel.blockedApps.collectAsState()
     val isPro by viewModel.isPro.collectAsState()
     var query by remember { mutableStateOf("") }
+    var filter by remember { mutableStateOf(ListFilter.All) }
 
     LaunchedEffect(Unit) {
         viewModel.paywallPrompt.collect { onNavigateToPaywall() }
@@ -71,12 +76,21 @@ fun AppPickerScreen(
 
     val blockedMap = remember(blockedApps) { blockedApps.associateBy { it.packageName } }
     val blockedCount = blockedApps.count { it.isEnabled }
-    val filtered = remember(installedApps, query) {
-        if (query.isBlank()) installedApps
-        else installedApps.filter {
-            it.label.contains(query, ignoreCase = true) ||
-                it.packageName.contains(query, ignoreCase = true)
-        }
+    val filtered = remember(installedApps, query, filter, blockedMap) {
+        installedApps
+            .filter { app ->
+                val blocked = blockedMap[app.packageName]?.isEnabled == true
+                when (filter) {
+                    ListFilter.All -> true
+                    ListFilter.Blocked -> blocked
+                    ListFilter.Open -> !blocked
+                }
+            }
+            .filter {
+                query.isBlank() ||
+                    it.label.contains(query, ignoreCase = true) ||
+                    it.packageName.contains(query, ignoreCase = true)
+            }
     }
 
     Column(
@@ -96,7 +110,7 @@ fun AppPickerScreen(
                 modifier = Modifier.weight(1f),
             )
             if (isPro) {
-                PillBadge("PRO UNLIMITED", ProGold)
+                PillBadge("PRO UNLIMITED", PremiumGold)
             } else {
                 PillBadge("FREE · $blockedCount/1", RepGray)
             }
@@ -107,22 +121,43 @@ fun AppPickerScreen(
             fontSize = 13.sp,
         )
 
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Search apps", color = RepGray) },
-            leadingIcon = { Icon(Icons.Filled.Search, null, tint = RepGray) },
-            singleLine = true,
-            shape = RoundedCornerShape(28.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = ElectricGreen.copy(alpha = 0.6f),
-                unfocusedBorderColor = Color.White.copy(alpha = 0.10f),
-                focusedContainerColor = RepSurfaceVariant,
-                unfocusedContainerColor = RepSurfaceVariant,
-                cursorColor = ElectricGreen,
-            ),
-        )
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier.weight(1f),
+                placeholder = { Text("Search apps", color = RepGray) },
+                leadingIcon = { Icon(Icons.Filled.Search, null, tint = RepGray) },
+                singleLine = true,
+                shape = RoundedCornerShape(28.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = ElectricGreen.copy(alpha = 0.6f),
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.10f),
+                    focusedContainerColor = RepSurfaceVariant,
+                    unfocusedContainerColor = RepSurfaceVariant,
+                    cursorColor = ElectricGreen,
+                ),
+            )
+            Spacer(Modifier.width(10.dp))
+            // Cycles All → Blocked → Open. Current filter is shown as a small label.
+            Column(
+                Modifier
+                    .size(56.dp)
+                    .background(RepSurfaceVariant, RoundedCornerShape(28.dp))
+                    .clickable {
+                        filter = ListFilter.entries[(filter.ordinal + 1) % ListFilter.entries.size]
+                    },
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Icon(
+                    Icons.Filled.Tune,
+                    contentDescription = "Filter apps",
+                    tint = if (filter == ListFilter.All) RepGray else ElectricGreen,
+                )
+                Text(filter.label, color = RepGray, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            }
+        }
 
         LazyColumn(
             Modifier.weight(1f),

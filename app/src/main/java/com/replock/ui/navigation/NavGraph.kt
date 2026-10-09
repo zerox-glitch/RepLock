@@ -87,6 +87,7 @@ fun RepLockNavHost(
                     onOpenAppPicker = { navController.navigate(Screen.AppPicker.route) },
                     onOpenSettings = { navController.navigate(Screen.Settings.route) },
                     onOpenStats = { navController.navigate(Screen.Stats.route) },
+                    onOpenPaywall = { navController.navigate(Screen.Paywall.route) },
                 )
             }
             composable(Screen.AppPicker.route) {

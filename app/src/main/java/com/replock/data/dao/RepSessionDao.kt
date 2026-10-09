@@ -19,4 +19,7 @@ interface RepSessionDao {
 
     @Query("SELECT timestamp FROM rep_sessions ORDER BY timestamp DESC")
     suspend fun allTimestamps(): List<Long>
+
+    @Query("SELECT * FROM rep_sessions WHERE timestamp >= :since ORDER BY timestamp ASC")
+    fun sessionsSince(since: Long): Flow<List<RepSessionEntity>>
 }
