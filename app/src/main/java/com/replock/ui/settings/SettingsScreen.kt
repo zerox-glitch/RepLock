@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -27,10 +25,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.replock.data.SettingsDataStore
+import com.replock.ui.components.GlassCard
 import com.replock.ui.theme.ElectricGreen
 import com.replock.ui.theme.RepBlack
 import com.replock.ui.theme.RepGray
-import com.replock.ui.theme.RepSurface
 import com.replock.util.formatUnlockWindow
 import kotlin.math.abs
 
@@ -58,7 +56,7 @@ fun SettingsScreen(
         Text("Settings", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Color.White)
 
         // Rep target
-        Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = RepSurface)) {
+        GlassCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
                 Text("Rep target", color = Color.White, fontWeight = FontWeight.Bold)
                 Text("Reps required to unlock an app", color = RepGray, fontSize = 13.sp)
@@ -74,7 +72,7 @@ fun SettingsScreen(
         }
 
         // Unlock window (up to 3 hours)
-        Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = RepSurface)) {
+        GlassCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
                 Text("Unlock window", color = Color.White, fontWeight = FontWeight.Bold)
                 Text(
@@ -106,7 +104,7 @@ fun SettingsScreen(
         }
 
         // Exercise
-        Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = RepSurface)) {
+        GlassCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
                 Text("Exercise", color = Color.White, fontWeight = FontWeight.Bold)
                 Text("What RepLock counts to unlock apps", color = RepGray, fontSize = 13.sp)
@@ -132,7 +130,7 @@ fun SettingsScreen(
         }
 
         // Pro
-        Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = RepSurface)) {
+        GlassCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
                 Text("RepLock Pro", color = Color.White, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
