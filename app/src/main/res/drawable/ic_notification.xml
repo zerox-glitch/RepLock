@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- White dumbbell silhouette for the persistent "RepLock is active" notification. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M4,11 L20,11 L20,13 L4,13 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M6,7 L8,7 L8,17 L6,17 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M16,7 L18,7 L18,17 L16,17 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M3,9 L5,9 L5,15 L3,15 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M19,9 L21,9 L21,15 L19,15 Z" />
+</vector>

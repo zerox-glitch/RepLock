@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Electric-green dumbbell glyph on a dark adaptive-icon background. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- bar -->
+    <path
+        android:fillColor="#FF00FF88"
+        android:pathData="M24,52 L84,52 L84,56 L24,56 Z" />
+    <!-- inner plates -->
+    <path
+        android:fillColor="#FF00FF88"
+        android:pathData="M32,40 L38,40 L38,68 L32,68 Z" />
+    <path
+        android:fillColor="#FF00FF88"
+        android:pathData="M70,40 L76,40 L76,68 L70,68 Z" />
+    <!-- outer plates -->
+    <path
+        android:fillColor="#FF00FF88"
+        android:pathData="M24,44 L30,44 L30,64 L24,64 Z" />
+    <path
+        android:fillColor="#FF00FF88"
+        android:pathData="M78,44 L84,44 L84,64 L78,64 Z" />
+</vector>
