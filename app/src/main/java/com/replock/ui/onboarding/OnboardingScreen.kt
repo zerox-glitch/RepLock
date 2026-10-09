@@ -20,6 +20,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -179,6 +183,8 @@ fun OnboardingScreen(settings: SettingsDataStore) {
         Column(
             Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
                 .padding(horizontal = 24.dp, vertical = 14.dp),
         ) {
             val previous = steps.getOrNull(index - 1)
@@ -201,11 +207,7 @@ fun OnboardingScreen(settings: SettingsDataStore) {
                 },
                 label = "onboarding",
             ) { current ->
-                Column(
-                    Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
+                run {
                     when (current) {
                         OnboardingStep.Welcome -> WelcomePage(
                             onNext = { step = nextAfter(OnboardingStep.Welcome) },
@@ -371,43 +373,80 @@ private fun ProgressHeader(index: Int, total: Int, onBack: (() -> Unit)?) {
     }
 }
 
+/**
+ * Standard page layout: the body scrolls if it's taller than the screen, and
+ * the action buttons are pinned to the bottom so they're always reachable.
+ */
 @Composable
-private fun ColumnScope.WelcomePage(onNext: () -> Unit) {
-    GlowHero(size = 220.dp) {
-        ExerciseDemo(ExerciseMode.Pushups, Modifier.size(200.dp))
+private fun OnboardingPage(
+    body: @Composable ColumnScope.() -> Unit,
+    actions: @Composable ColumnScope.() -> Unit,
+) {
+    Column(Modifier.fillMaxSize()) {
+        Column(
+            Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Spacer(Modifier.height(8.dp))
+            body()
+            Spacer(Modifier.height(16.dp))
+        }
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp, bottom = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            actions()
+        }
     }
-    Spacer(Modifier.height(18.dp))
-    Text(
-        "Earn your screen time",
-        fontSize = 32.sp,
-        fontWeight = FontWeight.Black,
-        color = Color.White,
-        textAlign = TextAlign.Center,
-        lineHeight = 36.sp,
-    )
-    Spacer(Modifier.height(10.dp))
-    Text(
-        "RepLock locks the apps that eat your day. Do a few reps on camera and they " +
-            "open again, for as long as you choose (up to 3 hours).",
-        color = RepGray,
-        fontSize = 15.sp,
-        textAlign = TextAlign.Center,
-        lineHeight = 21.sp,
-    )
-    Spacer(Modifier.height(20.dp))
-    FeatureRow(Icons.Filled.Lock, "Pick the apps to lock", "Social, games, anything that steals focus.")
-    Spacer(Modifier.height(10.dp))
-    FeatureRow(Icons.Filled.Videocam, "Count reps on camera", "On-device pose detection. No video leaves the phone.")
-    Spacer(Modifier.height(10.dp))
-    FeatureRow(Icons.Filled.LockOpen, "Earn a timed unlock", "Pick the window in Settings, from 1 minute to 3 hours.")
-    Spacer(Modifier.weight(1f))
-    BigButton(label = "Get started", onClick = onNext)
-    Spacer(Modifier.height(8.dp))
-    Text("Takes about a minute", color = RepGray, fontSize = 12.sp)
 }
 
 @Composable
-private fun ColumnScope.PermissionPage(
+private fun WelcomePage(onNext: () -> Unit) {
+    OnboardingPage(
+        body = {
+            GlowHero(size = 210.dp) {
+                ExerciseDemo(ExerciseMode.Pushups, Modifier.size(190.dp))
+            }
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "Earn your screen time",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Black,
+                color = Color.White,
+                textAlign = TextAlign.Center,
+                lineHeight = 36.sp,
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "RepLock locks the apps that eat your day. Do a few reps on camera and they " +
+                    "open again, for as long as you choose (up to 3 hours).",
+                color = RepGray,
+                fontSize = 15.sp,
+                textAlign = TextAlign.Center,
+                lineHeight = 21.sp,
+            )
+            Spacer(Modifier.height(18.dp))
+            FeatureRow(Icons.Filled.Lock, "Pick the apps to lock", "Social, games, anything that steals focus.")
+            Spacer(Modifier.height(10.dp))
+            FeatureRow(Icons.Filled.Videocam, "Count reps on camera", "On-device pose detection. No video leaves the phone.")
+            Spacer(Modifier.height(10.dp))
+            FeatureRow(Icons.Filled.LockOpen, "Earn a timed unlock", "Pick the window in Settings, from 1 minute to 3 hours.")
+        },
+        actions = {
+            BigButton(label = "Get started", onClick = onNext)
+            Spacer(Modifier.height(8.dp))
+            Text("Takes about a minute", color = RepGray, fontSize = 12.sp)
+        },
+    )
+}
+
+@Composable
+private fun PermissionPage(
     icon: ImageVector,
     title: String,
     subtitle: String,
@@ -423,76 +462,81 @@ private fun ColumnScope.PermissionPage(
     footnote: String? = null,
 ) {
     val accent = if (granted) ElectricGreen else PremiumGold
-    GlowHero(size = 170.dp, color = accent) {
-        Box(
-            Modifier
-                .size(100.dp)
-                .background(GlassSurface, CircleShape)
-                .border(1.dp, GlassBorder, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(44.dp))
-        }
-    }
-    Spacer(Modifier.height(14.dp))
-    PillBadge(
-        text = if (granted) "GRANTED" else "NEEDS ACCESS",
-        color = accent,
-    )
-    Spacer(Modifier.height(12.dp))
-    Text(
-        title,
-        fontSize = 26.sp,
-        fontWeight = FontWeight.Black,
-        color = Color.White,
-        textAlign = TextAlign.Center,
-    )
-    Spacer(Modifier.height(8.dp))
-    Text(
-        subtitle,
-        color = RepGray,
-        fontSize = 14.sp,
-        textAlign = TextAlign.Center,
-        lineHeight = 20.sp,
-    )
-    Spacer(Modifier.height(16.dp))
-    GlassCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
-            bullets.forEach { BulletRow(it) }
-        }
-    }
-    Spacer(Modifier.weight(1f))
-    if (footnote != null && !granted) {
-        Text(
-            footnote,
-            color = RepGray,
-            fontSize = 12.sp,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(10.dp))
-    }
-    BigButton(
-        label = if (granted) "Granted" else primaryLabel,
-        onClick = onPrimary,
-        enabled = !granted,
-    )
-    if (!granted && secondaryLabel != null && onSecondary != null) {
-        TextButton(onClick = onSecondary) {
-            Text(secondaryLabel, color = RepGray)
-        }
-    }
-    Spacer(Modifier.height(8.dp))
-    BigButton(
-        label = nextLabel,
-        onClick = onNext,
-        enabled = nextEnabled,
-        color = if (nextEnabled && granted) ElectricGreen else Color.White.copy(alpha = 0.10f),
-        contentColor = if (nextEnabled && granted) RepBlack else Color.White,
+    OnboardingPage(
+        body = {
+            GlowHero(size = 170.dp, color = accent) {
+                Box(
+                    Modifier
+                        .size(100.dp)
+                        .background(GlassSurface, CircleShape)
+                        .border(1.dp, GlassBorder, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(44.dp))
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            PillBadge(
+                text = if (granted) "GRANTED" else "NEEDS ACCESS",
+                color = accent,
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                title,
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Black,
+                color = Color.White,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                subtitle,
+                color = RepGray,
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center,
+                lineHeight = 20.sp,
+            )
+            Spacer(Modifier.height(16.dp))
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    bullets.forEach { BulletRow(it) }
+                }
+            }
+        },
+        actions = {
+            if (footnote != null && !granted) {
+                Text(
+                    footnote,
+                    color = RepGray,
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(10.dp))
+            }
+            BigButton(
+                label = if (granted) "Granted" else primaryLabel,
+                onClick = onPrimary,
+                enabled = !granted,
+            )
+            if (!granted && secondaryLabel != null && onSecondary != null) {
+                TextButton(onClick = onSecondary) {
+                    Text(secondaryLabel, color = RepGray)
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            BigButton(
+                label = nextLabel,
+                onClick = onNext,
+                enabled = nextEnabled,
+                color = if (nextEnabled && granted) ElectricGreen else Color.White.copy(alpha = 0.10f),
+                contentColor = if (nextEnabled && granted) RepBlack else Color.White,
+            )
+        },
     )
 }
 
 @Composable
-private fun ColumnScope.DonePage(
+private fun DonePage(
     cameraOk: Boolean,
     usageOk: Boolean,
     overlayOk: Boolean,
@@ -502,47 +546,51 @@ private fun ColumnScope.DonePage(
 ) {
     val allRequiredGranted = cameraOk && usageOk && overlayOk
     val accent = if (allRequiredGranted) ElectricGreen else PremiumGold
-
-    GlowHero(size = 170.dp, color = accent) {
-        Icon(
-            if (allRequiredGranted) Icons.Filled.CheckCircle else Icons.Filled.Warning,
-            contentDescription = null,
-            tint = accent,
-            modifier = Modifier.size(84.dp),
-        )
-    }
-    Spacer(Modifier.height(12.dp))
-    Text(
-        if (allRequiredGranted) "You're all set" else "Almost there",
-        fontSize = 28.sp,
-        fontWeight = FontWeight.Black,
-        color = Color.White,
-        textAlign = TextAlign.Center,
-    )
-    Spacer(Modifier.height(6.dp))
-    Text(
-        if (allRequiredGranted) {
-            "Next, pick the apps you want to lock. Blocking starts as soon as you finish."
-        } else {
-            "Some permissions are still missing. Blocking won't work until they're on. " +
-                "You can fix them later in Settings."
+    OnboardingPage(
+        body = {
+            GlowHero(size = 170.dp, color = accent) {
+                Icon(
+                    if (allRequiredGranted) Icons.Filled.CheckCircle else Icons.Filled.Warning,
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(84.dp),
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            Text(
+                if (allRequiredGranted) "You're all set" else "Almost there",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Black,
+                color = Color.White,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                if (allRequiredGranted) {
+                    "Next, pick the apps you want to lock. Blocking starts as soon as you finish."
+                } else {
+                    "Some permissions are still missing. Blocking won't work until they're on. " +
+                        "You can fix them later in Settings."
+                },
+                color = RepGray,
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center,
+                lineHeight = 20.sp,
+            )
+            Spacer(Modifier.height(16.dp))
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    ChecklistRow("Camera", cameraOk)
+                    ChecklistRow("Usage access", usageOk)
+                    ChecklistRow("Display over apps", overlayOk)
+                    if (notificationsRequired) ChecklistRow("Notifications", notificationsOk)
+                }
+            }
         },
-        color = RepGray,
-        fontSize = 14.sp,
-        textAlign = TextAlign.Center,
-        lineHeight = 20.sp,
+        actions = {
+            BigButton(label = "Start blocking", onClick = onFinish)
+        },
     )
-    Spacer(Modifier.height(16.dp))
-    GlassCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
-            ChecklistRow("Camera", cameraOk)
-            ChecklistRow("Usage access", usageOk)
-            ChecklistRow("Display over apps", overlayOk)
-            if (notificationsRequired) ChecklistRow("Notifications", notificationsOk)
-        }
-    }
-    Spacer(Modifier.weight(1f))
-    BigButton(label = "Start blocking", onClick = onFinish)
 }
 
 // ---------------------------------------------------------------------------
