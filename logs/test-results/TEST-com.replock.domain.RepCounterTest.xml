@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.replock.domain.RepCounterTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-10-09T18:38:03" hostname="runnervmmprz5" time="0.006">
+  <properties/>
+  <testcase name="counts a rep when arms go down then back up" classname="com.replock.domain.RepCounterTest" time="0.002"/>
+  <testcase name="one leg not deep enough blocks the squat rep" classname="com.replock.domain.RepCounterTest" time="0.0"/>
+  <testcase name="asymmetric arms are rejected and freeze the state machine" classname="com.replock.domain.RepCounterTest" time="0.0"/>
+  <testcase name="partial depth does not count" classname="com.replock.domain.RepCounterTest" time="0.0"/>
+  <testcase name="enforces minimum 800ms interval between reps" classname="com.replock.domain.RepCounterTest" time="0.0"/>
+  <testcase name="reset clears state" classname="com.replock.domain.RepCounterTest" time="0.0"/>
+  <testcase name="counts a squat rep with squat thresholds" classname="com.replock.domain.RepCounterTest" time="0.0"/>
+  <testcase name="counts multiple full reps" classname="com.replock.domain.RepCounterTest" time="0.0"/>
+  <testcase name="shallow squat does not count" classname="com.replock.domain.RepCounterTest" time="0.0"/>
+  <testcase name="arms must be fully extended to reset the rep" classname="com.replock.domain.RepCounterTest" time="0.0"/>
+  <testcase name="one arm not deep enough blocks the rep" classname="com.replock.domain.RepCounterTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

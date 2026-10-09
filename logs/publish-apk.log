@@ -1,0 +1,33 @@
++ git config user.name 'github-actions[bot]'
++ git config user.email 'github-actions[bot]@users.noreply.github.com'
++ APK=app/build/outputs/apk/debug/app-debug.apk
++ cp -r app/build/test-results/testDebugUnitTest /tmp/test-results
++ cp -r app/build/reports/tests/testDebugUnitTest /tmp/test-report
++ '[' -f app/build/outputs/apk/debug/app-debug.apk ']'
+++ stat -c%s app/build/outputs/apk/debug/app-debug.apk
++ SIZE=79490763
++ echo 'APK size: 79490763 bytes'
+APK size: 79490763 bytes
++ cp app/build/outputs/apk/debug/app-debug.apk /tmp/replock-debug.apk
++ git checkout --orphan builds/replock-apk
+Switched to a new branch 'builds/replock-apk'
++ git rm -rf .
++ git clean -fdxq
++ mkdir -p app/build/outputs/apk/debug
++ cp /tmp/replock-debug.apk app/build/outputs/apk/debug/app-debug.apk
++ cp /tmp/replock-debug.apk RepLock-debug.apk
++ printf '# RepLock debug APK (auto-built by GitHub Actions)\n\n- APK: `RepLock-debug.apk` (also at `app/build/outputs/apk/debug/app-debug.apk`)\n- Size: %s bytes\n- Built from branch `arena/4546cc7a-replock`\n- Install: `adb install -r RepLock-debug.apk`\n' 79490763
++ git add -A
+++ date -u +%Y-%m-%dT%H:%M:%SZ
++ git commit -m 'APK build 2026-10-09T18:39:29Z'
+[builds/replock-apk (root-commit) 6d0f5cb] APK build 2026-10-09T18:39:29Z
+ 3 files changed, 6 insertions(+)
+ create mode 100644 README.md
+ create mode 100644 RepLock-debug.apk
+ create mode 100644 app/build/outputs/apk/debug/app-debug.apk
++ git push --force origin builds/replock-apk
+remote: warning: See https://gh.io/lfs for more information.        
+remote: warning: File RepLock-debug.apk is 75.81 MB; this is larger than GitHub's recommended maximum file size of 50.00 MB        
+remote: warning: GH001: Large files detected. You may want to try Git Large File Storage - https://git-lfs.github.com.        
+To https://github.com/zerox-glitch/RepLock
+ + ef99649...6d0f5cb builds/replock-apk -> builds/replock-apk (forced update)
