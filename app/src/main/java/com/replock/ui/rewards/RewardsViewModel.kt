@@ -25,7 +25,7 @@ data class RewardsUi(
     val level: Int = 1,
     val levelTitle: String = "Rookie",
     val xpIntoLevel: Int = 0,
-    val xpPerLevel: Int = XP_PER_LEVEL,
+    val xpPerLevel: Int = RewardsViewModel.XP_PER_LEVEL,
     val totalXp: Int = 0,
     val isPro: Boolean = false,
     val milestones: List<Milestone> = emptyList(),
