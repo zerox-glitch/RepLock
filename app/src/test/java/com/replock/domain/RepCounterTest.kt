@@ -74,7 +74,7 @@ class RepCounterTest {
         counter.onFrame(80f, 80f, 100L)   // down
         assertFalse(counter.onFrame(140f, 140f, 200L)) // not > 160 -> still DOWN
         assertEquals(RepCounter.Phase.DOWN, counter.phase)
-        assertFalse(counter.onFrame(170f, 170f, 300L)) // now fully up -> but interval ok (first rep)
+        assertTrue(counter.onFrame(170f, 170f, 300L)) // fully up again -> first rep counted
         assertEquals(1, counter.reps)
     }
 

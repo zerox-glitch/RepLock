@@ -55,40 +55,61 @@ jobs:
       - name: Publish APK to builds/replock-apk branch
         if: always()
         run: |
-          set -e
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          APK=app/build/outputs/apk/debug/app-debug.apk
-          if [ -f "$APK" ]; then
-            SIZE=$(stat -c%s "$APK")
-            echo "APK size: $SIZE bytes"
-            git checkout --orphan builds/replock-apk
-            git rm -rf . > /dev/null 2>&1 || true
-            mkdir -p app/build/outputs/apk/debug
-            cp "$APK" app/build/outputs/apk/debug/app-debug.apk
-            cp "$APK" RepLock-debug.apk
-            printf '# RepLock debug APK (auto-built by GitHub Actions)\n\n- APK: `RepLock-debug.apk` (also at `app/build/outputs/apk/debug/app-debug.apk`)\n- Size: %s bytes\n- Built from branch `arena/4546cc7a-replock`\n- Install: `adb install -r RepLock-debug.apk`\n' "$SIZE" > README.md
-            git add -A
-            git commit -m "APK build $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            git push --force origin builds/replock-apk
-          else
-            echo "APK missing - build failed, see builds/ci-logs"
-          fi
+          set -o pipefail
+          {
+            set -x
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            APK=app/build/outputs/apk/debug/app-debug.apk
+            # Save everything we want to keep before wiping the working tree.
+            cp -r app/build/test-results/testDebugUnitTest /tmp/test-results 2>/dev/null || true
+            cp -r app/build/reports/tests/testDebugUnitTest /tmp/test-report 2>/dev/null || true
+            if [ -f "$APK" ]; then
+              SIZE=$(stat -c%s "$APK")
+              echo "APK size: $SIZE bytes"
+              cp "$APK" /tmp/replock-debug.apk
+              git checkout --orphan builds/replock-apk
+              git rm -rf . > /dev/null 2>&1 || true
+              git clean -fdxq || true
+              mkdir -p app/build/outputs/apk/debug
+              cp /tmp/replock-debug.apk app/build/outputs/apk/debug/app-debug.apk
+              cp /tmp/replock-debug.apk RepLock-debug.apk
+              printf '# RepLock debug APK (auto-built by GitHub Actions)\n\n- APK: `RepLock-debug.apk` (also at `app/build/outputs/apk/debug/app-debug.apk`)\n- Size: %s bytes\n- Built from branch `arena/4546cc7a-replock`\n- Install: `adb install -r RepLock-debug.apk`\n' "$SIZE" > README.md
+              git add -A
+              git commit -m "APK build $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              git push --force origin builds/replock-apk
+            else
+              echo "APK missing - build failed, see builds/ci-logs"
+              git checkout --orphan builds/replock-apk
+              git rm -rf . > /dev/null 2>&1 || true
+              git clean -fdxq || true
+              echo "# RepLock debug APK - build failed" > README.md
+              echo "See the builds/ci-logs branch for logs." >> README.md
+              git add -A
+              git commit -m "APK build failed $(date -u +%Y-%m-%dT%H:%M:%SZ)" || true
+              git push --force origin builds/replock-apk || true
+            fi
+          } 2>&1 | tee /tmp/publish-apk.log
 
       - name: Publish logs to builds/ci-logs branch
         if: always()
         run: |
-          set -e
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout --orphan builds/ci-logs
-          git rm -rf . > /dev/null 2>&1 || true
-          mkdir -p logs
-          cp /tmp/test.log logs/test.log 2>/dev/null || true
-          cp /tmp/build.log logs/build.log 2>/dev/null || true
-          cp -r app/build/reports/tests/testDebugUnitTest logs/test-report 2>/dev/null || true
-          cp -r app/build/test-results/testDebugUnitTest logs/test-results 2>/dev/null || true
-          echo "# RepLock CI logs (auto-published by GitHub Actions)" > README.md
-          git add -A
-          git commit -m "CI logs $(date -u +%Y-%m-%dT%H:%M:%SZ)" || true
-          git push --force origin builds/ci-logs || true
+          set -o pipefail
+          {
+            set -x
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git checkout --orphan builds/ci-logs
+            git rm -rf . > /dev/null 2>&1 || true
+            git clean -fdxq || true
+            mkdir -p logs
+            cp /tmp/test.log logs/test.log 2>/dev/null || true
+            cp /tmp/build.log logs/build.log 2>/dev/null || true
+            cp /tmp/publish-apk.log logs/publish-apk.log 2>/dev/null || true
+            cp -r /tmp/test-results logs/test-results 2>/dev/null || true
+            cp -r /tmp/test-report logs/test-report 2>/dev/null || true
+            echo "# RepLock CI logs (auto-published by GitHub Actions)" > README.md
+            git add -A
+            git commit -m "CI logs $(date -u +%Y-%m-%dT%H:%M:%SZ)" || true
+            git push --force origin builds/ci-logs || true
+          } 2>&1 | tee /tmp/publish-logs.log
