@@ -6,11 +6,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Unit tests for the pushup rep-counting state machine. Pure JVM — no device needed.
+ * Unit tests for the rep-counting state machine. Pure JVM — no device needed.
  *
- * Elbow angles: arms straight (pushup "up") ≈ 170°, elbows bent (pushup "down") ≈ 80°.
+ * Pushups: elbow angle (shoulder–elbow–wrist) — arms straight ≈ 170°, bent ≈ 80°.
+ * Squats: knee angle (hip–knee–ankle) — standing ≈ 170°, deep squat ≈ 90°.
  */
 class RepCounterTest {
+
+    // ---- Pushups (default thresholds: up > 160, down < 90) ----
 
     @Test
     fun `counts a rep when arms go down then back up`() {
@@ -101,5 +104,35 @@ class RepCounterTest {
         assertEquals(0, counter.reps)
         assertEquals(RepCounter.Phase.UP, counter.phase)
         assertTrue(counter.formOk)
+    }
+
+    // ---- Squats (thresholds: standing > 150, deep < 100) ----
+
+    @Test
+    fun `counts a squat rep with squat thresholds`() {
+        val counter = RepCounter(upThreshold = 150f, downThreshold = 100f)
+        assertFalse(counter.onFrame(170f, 170f, 0L))   // standing
+        assertFalse(counter.onFrame(90f, 90f, 100L))   // deep squat
+        assertTrue(counter.onFrame(170f, 170f, 200L))  // stand up -> rep!
+        assertEquals(1, counter.reps)
+    }
+
+    @Test
+    fun `shallow squat does not count`() {
+        val counter = RepCounter(upThreshold = 150f, downThreshold = 100f)
+        counter.onFrame(170f, 170f, 0L)
+        assertFalse(counter.onFrame(120f, 120f, 100L)) // not deep enough (< 100 required)
+        assertFalse(counter.onFrame(170f, 170f, 200L))
+        assertEquals(0, counter.reps)
+    }
+
+    @Test
+    fun `one leg not deep enough blocks the squat rep`() {
+        val counter = RepCounter(upThreshold = 150f, downThreshold = 100f)
+        counter.onFrame(170f, 170f, 0L)
+        // Symmetric enough (diff 25 ≤ 30) but right knee never goes below 100°.
+        assertFalse(counter.onFrame(90f, 115f, 100L))
+        assertFalse(counter.onFrame(170f, 170f, 200L))
+        assertEquals(0, counter.reps)
     }
 }

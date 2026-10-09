@@ -30,24 +30,32 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
@@ -59,20 +67,23 @@ import androidx.concurrent.futures.await
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import com.replock.domain.ExerciseMode
+import com.replock.ui.components.ExerciseDemo
 import com.replock.ui.components.RepCounterDisplay
 import com.replock.ui.paywall.PaywallScreen
 import com.replock.ui.theme.ElectricGreen
 import com.replock.ui.theme.LockedRed
-import com.replock.ui.theme.RepBlack
 import com.replock.ui.theme.RepGray
 import com.replock.ui.theme.RepLockTheme
+import com.replock.ui.theme.RepSurface
+import com.replock.ui.theme.RepSurfaceVariant
 import com.replock.util.Haptics
 import kotlinx.coroutines.delay
 
 /**
  * Full-screen lock shown over blocked apps. Shows the front camera, counts
- * pushups with ML Kit pose detection, and dismisses once the rep target is
- * hit (granting a limited unlock window). TYPE_APPLICATION_OVERLAY-style
+ * pushups/squats with ML Kit pose detection, and dismisses once the rep target
+ * is hit (granting a limited unlock window). TYPE_APPLICATION_OVERLAY-style
  * behaviour comes from the SYSTEM_ALERT_WINDOW grant — this is a normal
  * activity launched with FLAG_ACTIVITY_NEW_TASK on top of the blocked app.
  */
@@ -116,6 +127,7 @@ private fun OverlayRoute(viewModel: OverlayViewModel, onFinished: () -> Unit) {
     val target by viewModel.target.collectAsState()
     val reps by viewModel.reps.collectAsState()
     val pose by viewModel.pose.collectAsState()
+    val exerciseMode by viewModel.exerciseMode.collectAsState()
 
     val hasCameraPermission = ContextCompat.checkSelfPermission(
         context, Manifest.permission.CAMERA
@@ -147,42 +159,91 @@ private fun OverlayRoute(viewModel: OverlayViewModel, onFinished: () -> Unit) {
 
             if (state != OverlayState.Paywall) {
                 Column(Modifier.fillMaxSize()) {
+                    // Header: locked app + exercise chip
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .padding(24.dp),
+                            .padding(horizontal = 24.dp, vertical = 16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(Icons.Filled.Lock, null, tint = LockedRed, modifier = Modifier.size(28.dp))
-                        Spacer(Modifier.width(10.dp))
+                        Icon(Icons.Filled.Lock, null, tint = LockedRed, modifier = Modifier.size(24.dp))
+                        Spacer(Modifier.width(8.dp))
                         Text(
                             text = "${viewModel.appName} is locked",
                             color = Color.White,
-                            fontSize = 18.sp,
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f),
                         )
+                        Surface(
+                            color = LockedRed.copy(alpha = 0.18f),
+                            shape = RoundedCornerShape(8.dp),
+                        ) {
+                            Text(
+                                text = exerciseMode.label.uppercase(),
+                                color = LockedRed,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            )
+                        }
                     }
+
+                    // Which angle should face the camera
+                    Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                        CameraAngleGuide(exerciseMode)
+                    }
+
                     Spacer(Modifier.weight(1f))
+
+                    // Big rep counter
                     RepCounterDisplay(
                         reps = reps,
                         target = target,
                         modifier = Modifier.align(Alignment.CenterHorizontally),
                     )
+
                     Spacer(Modifier.weight(1f))
+
+                    // Animated exercise demo
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        DemoCard(exerciseMode)
+                    }
+                    Spacer(Modifier.height(8.dp))
+
+                    // Contextual hint
                     Text(
                         text = when {
-                            !pose.inFrame -> "Get in frame — put your phone down so the camera can see your whole body"
-                            !pose.formOk -> "Use BOTH arms — keep them symmetric"
-                            else -> "Do $target pushups. Straight arms → chest down → straight arms."
+                            !pose.inFrame -> when (exerciseMode) {
+                                ExerciseMode.Pushups ->
+                                    "Get in frame — your upper body (side view) must be visible"
+                                ExerciseMode.Squats ->
+                                    "Get in frame — your legs (side view) must be visible"
+                                ExerciseMode.Both ->
+                                    "Get in frame — your full body (side view) must be visible"
+                            }
+                            !pose.formOk -> when (exerciseMode) {
+                                ExerciseMode.Pushups -> "Use BOTH arms — keep them symmetric"
+                                ExerciseMode.Squats -> "Use BOTH legs — keep them symmetric"
+                                ExerciseMode.Both -> "Keep both sides symmetric"
+                            }
+                            else -> when (exerciseMode) {
+                                ExerciseMode.Pushups ->
+                                    "Do $target pushups. Straight arms → chest down → straight arms."
+                                ExerciseMode.Squats ->
+                                    "Do $target squats. Stand tall → thighs parallel → stand tall."
+                                ExerciseMode.Both ->
+                                    "Do $target reps — pushups or squats. Watch the demo."
+                            }
                         },
                         color = if (pose.inFrame && pose.formOk) RepGray else LockedRed,
-                        fontSize = 15.sp,
+                        fontSize = 14.sp,
                         textAlign = TextAlign.Center,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 32.dp),
                     )
-                    Spacer(Modifier.height(48.dp))
+                    Spacer(Modifier.height(32.dp))
                 }
             }
         } else {
@@ -239,6 +300,100 @@ private fun OverlayRoute(viewModel: OverlayViewModel, onFinished: () -> Unit) {
                         "${viewModel.appName} is open for a limited window",
                         color = RepGray,
                     )
+                }
+            }
+        }
+    }
+}
+
+/** Compact card explaining which body angle should face the camera, with a schematic. */
+@Composable
+private fun CameraAngleGuide(mode: ExerciseMode) {
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = RepSurfaceVariant.copy(alpha = 0.85f)),
+        shape = RoundedCornerShape(14.dp),
+    ) {
+        Row(
+            Modifier.padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (mode == ExerciseMode.Both) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    ExerciseDemo(ExerciseMode.Pushups, Modifier.size(48.dp), depth = 0f, showPhone = true)
+                    ExerciseDemo(ExerciseMode.Squats, Modifier.size(48.dp), depth = 0f)
+                }
+            } else {
+                ExerciseDemo(mode, Modifier.size(48.dp), depth = 0f, showPhone = true)
+            }
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "Camera angle",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = ElectricGreen,
+                )
+                Text(
+                    text = when (mode) {
+                        ExerciseMode.Pushups ->
+                            "Side view: plank with your profile facing the camera. " +
+                                "Phone on the floor at head height."
+                        ExerciseMode.Squats ->
+                            "Side view: stand with your profile facing the camera, " +
+                                "full body in frame."
+                        ExerciseMode.Both ->
+                            "Side view for both: full body in frame, profile facing the camera."
+                    },
+                    fontSize = 11.sp,
+                    color = RepGray,
+                )
+            }
+        }
+    }
+}
+
+/** Collapsible card with a looping animated demo of the selected exercise. */
+@Composable
+private fun DemoCard(mode: ExerciseMode) {
+    var visible by remember { mutableStateOf(true) }
+    Card(
+        colors = CardDefaults.cardColors(containerColor = RepSurface.copy(alpha = 0.9f)),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Column(
+            Modifier.padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Demo", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = RepGray)
+                IconButton(onClick = { visible = !visible }, modifier = Modifier.size(24.dp)) {
+                    Icon(
+                        if (visible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                        contentDescription = "Toggle demo",
+                        tint = RepGray,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+            if (visible) {
+                if (mode == ExerciseMode.Both) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            ExerciseDemo(ExerciseMode.Pushups, Modifier.size(64.dp))
+                            Text("Pushup", fontSize = 10.sp, color = RepGray)
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            ExerciseDemo(ExerciseMode.Squats, Modifier.size(64.dp))
+                            Text("Squat", fontSize = 10.sp, color = RepGray)
+                        }
+                    }
+                } else {
+                    ExerciseDemo(mode, Modifier.size(96.dp))
                 }
             }
         }

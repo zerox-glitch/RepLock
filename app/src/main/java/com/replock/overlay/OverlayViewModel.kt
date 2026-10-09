@@ -7,6 +7,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.replock.RepLockApp
 import com.replock.data.SettingsDataStore
+import com.replock.domain.ExerciseMode
 import com.replock.domain.RepCounter
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,8 +28,9 @@ data class PoseUiState(
 )
 
 /**
- * Drives the blocking overlay: counts reps from pose frames, and when the
- * target is hit either grants the unlock window or shows the paywall
+ * Drives the blocking overlay: counts reps from pose frames (pushups via elbow
+ * angle, squats via knee angle, or reps of either in "both" mode), and when
+ * the target is hit either grants the unlock window or shows the paywall
  * (free tier: 3 unlocks per day).
  */
 class OverlayViewModel(
@@ -45,11 +47,11 @@ class OverlayViewModel(
     private val _target = MutableStateFlow(SettingsDataStore.DEFAULT_REP_TARGET)
     val target: StateFlow<Int> = _target.asStateFlow()
 
+    private val _exerciseMode = MutableStateFlow(ExerciseMode.Pushups)
+    val exerciseMode: StateFlow<ExerciseMode> = _exerciseMode.asStateFlow()
+
     private val _reps = MutableStateFlow(0)
     val reps: StateFlow<Int> = _reps.asStateFlow()
-
-    private val _phase = MutableStateFlow(RepCounter.Phase.UP)
-    val phase: StateFlow<RepCounter.Phase> = _phase.asStateFlow()
 
     private val _pose = MutableStateFlow(PoseUiState())
     val pose: StateFlow<PoseUiState> = _pose.asStateFlow()
@@ -61,34 +63,68 @@ class OverlayViewModel(
     private val _repHaptics = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val repHaptics: SharedFlow<Unit> = _repHaptics.asSharedFlow()
 
-    private val counter = RepCounter()
+    // Pushups: elbow angle (shoulder–elbow–wrist). Straight > 160°, bent < 90°.
+    private val pushupCounter = RepCounter(upThreshold = 160f, downThreshold = 90f)
+    // Squats: knee angle (hip–knee–ankle). Standing > 150°, deep squat < 100°.
+    private val squatCounter = RepCounter(upThreshold = 150f, downThreshold = 100f)
+
     private var targetReachedHandled = false
 
     init {
         viewModelScope.launch {
             _target.value = settings.repTargetFlow.first()
+            _exerciseMode.value = when (settings.difficultyFlow.first()) {
+                SettingsDataStore.DIFFICULTY_SQUATS -> ExerciseMode.Squats
+                SettingsDataStore.DIFFICULTY_BOTH -> ExerciseMode.Both
+                else -> ExerciseMode.Pushups
+            }
         }
     }
 
     fun onPoseResult(result: PoseAnalyzer.PoseFrameResult) {
+        val mode = _exerciseMode.value
+        val inFrame = when (mode) {
+            ExerciseMode.Pushups -> result.upperBodyOk
+            ExerciseMode.Squats -> result.lowerBodyOk
+            ExerciseMode.Both -> result.upperBodyOk && result.lowerBodyOk
+        }
+
+        if (!inFrame) {
+            _pose.value = PoseUiState(
+                skeleton = result.skeleton,
+                inFrame = false,
+                formOk = false,
+            )
+            return
+        }
+
+        val now = SystemClock.elapsedRealtime()
+        val counted = when (mode) {
+            ExerciseMode.Pushups ->
+                pushupCounter.onFrame(result.leftElbowAngle, result.rightElbowAngle, now)
+            ExerciseMode.Squats ->
+                squatCounter.onFrame(result.leftKneeAngle, result.rightKneeAngle, now)
+            ExerciseMode.Both -> {
+                val p = pushupCounter.onFrame(result.leftElbowAngle, result.rightElbowAngle, now)
+                val s = squatCounter.onFrame(result.leftKneeAngle, result.rightKneeAngle, now)
+                p || s
+            }
+        }
+
+        _reps.value = pushupCounter.reps + squatCounter.reps
         _pose.value = PoseUiState(
             skeleton = result.skeleton,
-            inFrame = result.inFrame,
-            formOk = result.formOk,
+            inFrame = true,
+            formOk = when (mode) {
+                ExerciseMode.Pushups -> pushupCounter.formOk
+                ExerciseMode.Squats -> squatCounter.formOk
+                ExerciseMode.Both -> pushupCounter.formOk && squatCounter.formOk
+            },
         )
-        if (!result.inFrame) return
-
-        val counted = counter.onFrame(
-            result.leftElbowAngle,
-            result.rightElbowAngle,
-            SystemClock.elapsedRealtime(),
-        )
-        _phase.value = counter.phase
-        _reps.value = counter.reps
 
         if (counted) {
             _repHaptics.tryEmit(Unit)
-            if (counter.reps >= _target.value) onTargetReached()
+            if (_reps.value >= _target.value) onTargetReached()
         }
     }
 
@@ -97,7 +133,12 @@ class OverlayViewModel(
         targetReachedHandled = true
         viewModelScope.launch {
             // The user did the work — always record the session.
-            repository.recordRepSession(reps = counter.reps, exercise = "pushups")
+            val exerciseLabel = when (_exerciseMode.value) {
+                ExerciseMode.Pushups -> "pushups"
+                ExerciseMode.Squats -> "squats"
+                ExerciseMode.Both -> "mixed"
+            }
+            repository.recordRepSession(reps = _reps.value, exercise = exerciseLabel)
 
             val isPro = settings.isProFlow.first()
             val unlocksToday = repository.unlocksTodayCount()

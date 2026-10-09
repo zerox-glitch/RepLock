@@ -87,7 +87,7 @@ fun PaywallScreen(
             "Unlimited unlocks every day",
             "Block unlimited apps",
             "Custom rep targets",
-            "Squats mode (v2)",
+            "Squat mode",
             "Full stats history",
         ).forEach { feature ->
             Row(

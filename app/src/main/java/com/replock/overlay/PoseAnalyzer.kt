@@ -19,6 +19,10 @@ import kotlin.math.atan2
  * ML Kit, and a frame is dropped while a previous detection is still in flight.
  *
  * Video frames never leave the device — pose detection runs fully on-device.
+ *
+ * Reports both elbow angles (shoulder–elbow–wrist, for pushups) and knee angles
+ * (hip–knee–ankle, for squats), plus which body halves are confidently in frame.
+ * The ViewModel decides what "in frame" means based on the selected exercise.
  */
 class PoseAnalyzer(
     private val sampleEveryNthFrame: Int = 3,
@@ -28,10 +32,14 @@ class PoseAnalyzer(
     data class Point(val x: Float, val y: Float)
 
     data class PoseFrameResult(
-        val inFrame: Boolean,
-        val formOk: Boolean,
+        /** Shoulders/elbows/wrists all confidently in frame (needed for pushups). */
+        val upperBodyOk: Boolean,
+        /** Hips/knees/ankles all confidently in frame (needed for squats). */
+        val lowerBodyOk: Boolean,
         val leftElbowAngle: Float,
         val rightElbowAngle: Float,
+        val leftKneeAngle: Float,
+        val rightKneeAngle: Float,
         val skeleton: List<Pair<Point, Point>>,
     )
 
@@ -70,51 +78,53 @@ class PoseAnalyzer(
     private fun handlePose(pose: Pose) {
         fun landmark(type: Int): PoseLandmark? = pose.getPoseLandmark(type)
 
-        val requiredTypes = listOf(
+        val upperTypes = listOf(
             PoseLandmark.LEFT_SHOULDER, PoseLandmark.RIGHT_SHOULDER,
             PoseLandmark.LEFT_ELBOW, PoseLandmark.RIGHT_ELBOW,
             PoseLandmark.LEFT_WRIST, PoseLandmark.RIGHT_WRIST,
         )
-        val outOfFrame = requiredTypes.any { landmark(it)?.inFrameLikelihood ?: 0f < MIN_CONFIDENCE }
-        if (outOfFrame) {
-            onResult(
-                PoseFrameResult(
-                    inFrame = false,
-                    formOk = false,
-                    leftElbowAngle = 0f,
-                    rightElbowAngle = 0f,
-                    skeleton = skeletonEdges(pose),
-                )
-            )
-            return
-        }
-
-        val leftAngle = elbowAngle(
-            landmark(PoseLandmark.LEFT_SHOULDER)!!,
-            landmark(PoseLandmark.LEFT_ELBOW)!!,
-            landmark(PoseLandmark.LEFT_WRIST)!!,
+        val lowerTypes = listOf(
+            PoseLandmark.LEFT_HIP, PoseLandmark.RIGHT_HIP,
+            PoseLandmark.LEFT_KNEE, PoseLandmark.RIGHT_KNEE,
+            PoseLandmark.LEFT_ANKLE, PoseLandmark.RIGHT_ANKLE,
         )
-        val rightAngle = elbowAngle(
-            landmark(PoseLandmark.RIGHT_SHOULDER)!!,
-            landmark(PoseLandmark.RIGHT_ELBOW)!!,
-            landmark(PoseLandmark.RIGHT_WRIST)!!,
-        )
+        val upperBodyOk = upperTypes.all { landmark(it)?.inFrameLikelihood ?: 0f >= MIN_CONFIDENCE }
+        val lowerBodyOk = lowerTypes.all { landmark(it)?.inFrameLikelihood ?: 0f >= MIN_CONFIDENCE }
 
         onResult(
             PoseFrameResult(
-                inFrame = true,
-                formOk = abs(leftAngle - rightAngle) <= MAX_ASYMMETRY_DEG,
-                leftElbowAngle = leftAngle,
-                rightElbowAngle = rightAngle,
+                upperBodyOk = upperBodyOk,
+                lowerBodyOk = lowerBodyOk,
+                leftElbowAngle = jointAngle(
+                    landmark(PoseLandmark.LEFT_SHOULDER),
+                    landmark(PoseLandmark.LEFT_ELBOW),
+                    landmark(PoseLandmark.LEFT_WRIST),
+                ),
+                rightElbowAngle = jointAngle(
+                    landmark(PoseLandmark.RIGHT_SHOULDER),
+                    landmark(PoseLandmark.RIGHT_ELBOW),
+                    landmark(PoseLandmark.RIGHT_WRIST),
+                ),
+                leftKneeAngle = jointAngle(
+                    landmark(PoseLandmark.LEFT_HIP),
+                    landmark(PoseLandmark.LEFT_KNEE),
+                    landmark(PoseLandmark.LEFT_ANKLE),
+                ),
+                rightKneeAngle = jointAngle(
+                    landmark(PoseLandmark.RIGHT_HIP),
+                    landmark(PoseLandmark.RIGHT_KNEE),
+                    landmark(PoseLandmark.RIGHT_ANKLE),
+                ),
                 skeleton = skeletonEdges(pose),
             )
         )
     }
 
-    /** Angle at the elbow formed by shoulder–elbow–wrist, in degrees (0..180). */
-    private fun elbowAngle(shoulder: PoseLandmark, elbow: PoseLandmark, wrist: PoseLandmark): Float {
-        val radians = atan2(wrist.position.y - elbow.position.y, wrist.position.x - elbow.position.x) -
-            atan2(shoulder.position.y - elbow.position.y, shoulder.position.x - elbow.position.x)
+    /** Angle at joint [b] formed by a–b–c, in degrees (0..180). 0 when a landmark is missing. */
+    private fun jointAngle(a: PoseLandmark?, b: PoseLandmark?, c: PoseLandmark?): Float {
+        if (a == null || b == null || c == null) return 0f
+        val radians = atan2(c.position.y - b.position.y, c.position.x - b.position.x) -
+            atan2(a.position.y - b.position.y, a.position.x - b.position.x)
         var angle = abs(radians * 180.0 / Math.PI).toFloat()
         if (angle > 180f) angle = 360f - angle
         return angle
@@ -166,6 +176,5 @@ class PoseAnalyzer(
 
     companion object {
         private const val MIN_CONFIDENCE = 0.5f
-        private const val MAX_ASYMMETRY_DEG = 30f
     }
 }

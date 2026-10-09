@@ -56,7 +56,7 @@ fun SettingsScreen(
         Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = RepSurface)) {
             Column(Modifier.padding(16.dp)) {
                 Text("Rep target", color = Color.White, fontWeight = FontWeight.Bold)
-                Text("Pushups required to unlock an app", color = RepGray, fontSize = 13.sp)
+                Text("Reps required to unlock an app", color = RepGray, fontSize = 13.sp)
                 Spacer(Modifier.height(8.dp))
                 Text("$repTarget reps", fontSize = 32.sp, fontWeight = FontWeight.Black, color = ElectricGreen)
                 Slider(
@@ -84,11 +84,11 @@ fun SettingsScreen(
             }
         }
 
-        // Difficulty
+        // Exercise
         Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = RepSurface)) {
             Column(Modifier.padding(16.dp)) {
                 Text("Exercise", color = Color.White, fontWeight = FontWeight.Bold)
-                Text("Squats mode lands in v2 — detection is pushups for now", color = RepGray, fontSize = 13.sp)
+                Text("What RepLock counts to unlock apps", color = RepGray, fontSize = 13.sp)
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
@@ -99,12 +99,12 @@ fun SettingsScreen(
                     FilterChip(
                         selected = difficulty == SettingsDataStore.DIFFICULTY_SQUATS,
                         onClick = { viewModel.setDifficulty(SettingsDataStore.DIFFICULTY_SQUATS) },
-                        label = { Text("Squats (v2)") },
+                        label = { Text("Squats") },
                     )
                     FilterChip(
                         selected = difficulty == SettingsDataStore.DIFFICULTY_BOTH,
                         onClick = { viewModel.setDifficulty(SettingsDataStore.DIFFICULTY_BOTH) },
-                        label = { Text("Both (v2)") },
+                        label = { Text("Both") },
                     )
                 }
             }
@@ -124,7 +124,7 @@ fun SettingsScreen(
                 } else {
                     Text(
                         "$9.99/month or $29.99/year — unlimited unlocks, unlimited blocked apps, " +
-                            "custom rep targets, squats mode, full stats history.",
+                            "custom rep targets, squat mode, full stats history.",
                         color = RepGray,
                         fontSize = 14.sp,
                     )

@@ -22,12 +22,14 @@ until you complete a set number of **verified pushups via the front camera**.
 - ✅ App picker: all installed apps, icons, toggles, search
 - ✅ Foreground service polling `UsageStatsManager.queryEvents()` every 500 ms
 - ✅ Full-screen blocking overlay with CameraX + ML Kit pose detection
-- ✅ Pushup rep counter (see logic below)
+- ✅ Rep counter for **pushups and squats** (see logic below), with an animated exercise demo
+  and a camera-angle guide in the overlay
+- ✅ Camera-angle guide (which side should face the camera) + looping animated demo of the exercise
 - ✅ Unlock window logic, persisted across reboots (Room)
 - ✅ Settings: rep target (default 10), unlock window (default 5 min), difficulty
 - ✅ Stats: reps today, reps this week, streak, time earned back
 - ✅ Hardcoded paywall stub (free: 3 unlocks/day, 1 blocked app)
-- 🚧 v2: squats mode, deeper stats/history
+- 🚧 v2: deeper stats/history (per-exercise breakdown)
 - 🚧 v3: social features
 
 ## Pose detection logic (critical)
@@ -43,6 +45,14 @@ until you complete a set number of **verified pushups via the front camera**.
   the state machine freezes while asymmetric.
 - Visual feedback: **green** skeleton when form is detected, **red** when the user
   is out of frame or asymmetric. Haptic tick on every rep.
+- **Squats** use the same state machine on the **knee angle** (hip–knee–ankle):
+  standing **> 150°** → deep squat **< 100°** → standing **> 150°**. Same 800 ms
+  anti-cheat and 30° left/right symmetry rule (both legs).
+- **Both** mode counts a rep of either exercise toward the target (each exercise
+  has its own counter; a rep from either increments the shared count).
+- The overlay shows a **camera-angle guide** (side view — profile facing the
+  camera; phone placement hints) and a collapsible **animated demo** of the
+  selected exercise (stick figure looping through one rep).
 
 The counting logic lives in a pure, unit-tested class:
 [`app/src/main/java/com/replock/domain/RepCounter.kt`](app/src/main/java/com/replock/domain/RepCounter.kt)
