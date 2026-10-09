@@ -331,13 +331,15 @@ private fun PermissionStepLayout(
     rationale: String,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Icon(icon, null, tint = ElectricGreen, modifier = Modifier.size(56.dp))
-    Spacer(Modifier.height(16.dp))
-    Text(title, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
-    Spacer(Modifier.height(12.dp))
-    Text(rationale, color = RepGray, fontSize = 15.sp, textAlign = TextAlign.Center)
-    Spacer(Modifier.height(32.dp))
-    content()
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(icon, null, tint = ElectricGreen, modifier = Modifier.size(56.dp))
+        Spacer(Modifier.height(16.dp))
+        Text(title, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Spacer(Modifier.height(12.dp))
+        Text(rationale, color = RepGray, fontSize = 15.sp, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(32.dp))
+        content()
+    }
 }
 
 @Composable
@@ -345,7 +347,7 @@ private fun DoneStep(allGranted: Boolean, onFinish: () -> Unit) {
     Icon(
         if (allGranted) Icons.Filled.CheckCircle else Icons.Filled.Warning,
         null,
-        tint = if (allGranted) ElectricGreen else LockedRedColor,
+        tint = if (allGranted) ElectricGreen else LockedRed,
         modifier = Modifier.size(64.dp),
     )
     Spacer(Modifier.height(16.dp))
@@ -365,9 +367,6 @@ private fun DoneStep(allGranted: Boolean, onFinish: () -> Unit) {
     Spacer(Modifier.height(32.dp))
     BigButton(label = "Start blocking", onClick = onFinish)
 }
-
-private val LockedRedColor: Color
-    @Composable get() = com.replock.ui.theme.LockedRed
 
 @Composable
 private fun BigButton(
