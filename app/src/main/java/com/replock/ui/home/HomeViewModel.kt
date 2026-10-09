@@ -40,24 +40,33 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    val blockingEnabled: StateFlow<Boolean> = settings.blockingEnabledFlow
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
-    val repsToday: StateFlow<Int> = repository.repsToday
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
-    val unlocksToday: StateFlow<Int> = repository.unlocksTodayFlow()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
-    val isPro: StateFlow<Boolean> = settings.isProFlow
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
-    val enabledBlockedCount: StateFlow<Int> = repository.enabledBlockedCount
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
-    val unlockWindowMinutes: StateFlow<Int> = settings.unlockWindowMinutesFlow
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsDataStore.DEFAULT_UNLOCK_WINDOW_MINUTES)
+    private val sharing = SharingStarted.WhileSubscribed(5_000)
 
-    /** Reps per day for the last 7 days (oldest first) — drives the Reps-today sparkline. */
+    val blockingEnabled: StateFlow<Boolean> = settings.blockingEnabledFlow
+        .stateIn(viewModelScope, sharing, true)
+    val repsToday: StateFlow<Int> = repository.repsToday
+        .stateIn(viewModelScope, sharing, 0)
+    val unlocksToday: StateFlow<Int> = repository.unlocksTodayFlow()
+        .stateIn(viewModelScope, sharing, 0)
+    val isPro: StateFlow<Boolean> = settings.isProFlow
+        .stateIn(viewModelScope, sharing, false)
+    val enabledBlockedCount: StateFlow<Int> = repository.enabledBlockedCount
+        .stateIn(viewModelScope, sharing, 0)
+    val unlockWindowMinutes: StateFlow<Int> = settings.unlockWindowMinutesFlow
+        .stateIn(viewModelScope, sharing, SettingsDataStore.DEFAULT_UNLOCK_WINDOW_MINUTES)
+    val repTarget: StateFlow<Int> = settings.repTargetFlow
+        .stateIn(viewModelScope, sharing, SettingsDataStore.DEFAULT_REP_TARGET)
+
+    /** Package names of enabled blocked apps, for the icon row on Home. */
+    val blockedPackages: StateFlow<List<String>> = repository.blockedApps
+        .map { apps -> apps.filter { it.isEnabled }.map { it.packageName } }
+        .stateIn(viewModelScope, sharing, emptyList())
+
+    /** Reps per day for the last 7 days (oldest first); the last entry is today. */
     val repsLast7: StateFlow<List<Int>> = repository
         .repSessionsSince(RepLockRepository.startOfDaysAgoMillis(7))
         .map { sessions -> bucketByDay(sessions.map { it.timestamp to it.reps }, 7) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        .stateIn(viewModelScope, sharing, emptyList())
 
     fun setBlockingEnabled(enabled: Boolean) {
         viewModelScope.launch {

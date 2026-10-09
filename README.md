@@ -186,3 +186,7 @@ app/src/main/java/com/replock/
   package-visibility filtering or the `QUERY_ALL_PACKAGES` declaration review.
 - Release builds keep minification off for the MVP (ML Kit / CameraX / Room
   reflection paths). Ship debug APKs for device testing.
+
+## Design reference
+
+The UI follows the round-2 reference described in [`docs/design/REFERENCE.md`](docs/design/REFERENCE.md).

@@ -5,5 +5,6 @@ sealed class Screen(val route: String, val title: String) {
     data object AppPicker : Screen("app_picker", "Blocked Apps")
     data object Settings : Screen("settings", "Settings")
     data object Stats : Screen("stats", "Stats")
+    data object Rewards : Screen("rewards", "Rewards")
     data object Paywall : Screen("paywall", "RepLock Pro")
 }

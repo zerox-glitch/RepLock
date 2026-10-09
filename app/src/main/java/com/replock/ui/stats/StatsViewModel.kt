@@ -9,66 +9,69 @@ import com.replock.util.bucketByDay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
+
+enum class StatsRange(val label: String, val days: Int) {
+    Week("Week", 7),
+    Month("Month", 30),
+    AllTime("All Time", 90),
+}
+
+/** Everything the Stats screen shows for the selected range. */
+data class StatsUi(
+    val range: StatsRange = StatsRange.Week,
+    val reps: Int = 0,
+    val repsDelta: Int = 0,
+    val minutesEarned: Int = 0,
+    val minutesDelta: Int = 0,
+    val repSeries: List<Int> = emptyList(),
+    val unlockSeries: List<Int> = emptyList(),
+    val last7Reps: List<Int> = emptyList(),
+)
 
 class StatsViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = (application as RepLockApp).repository
-    private val settings = (application as RepLockApp).settings
-
+    private val app = application as RepLockApp
+    private val repository = app.repository
+    private val settings = app.settings
     private val sharing = SharingStarted.WhileSubscribed(5_000)
 
-    val repsToday: StateFlow<Int> = repository.repsToday.stateIn(viewModelScope, sharing, 0)
-    val repsThisWeek: StateFlow<Int> = repository
-        .repsSince(RepLockRepository.startOfWeekMillis())
-        .stateIn(viewModelScope, sharing, 0)
-    val totalReps: StateFlow<Int> = repository.totalReps.stateIn(viewModelScope, sharing, 0)
-    val totalUnlocks: StateFlow<Int> = repository.totalUnlocks.stateIn(viewModelScope, sharing, 0)
+    private val _range = MutableStateFlow(StatsRange.Week)
+    val range: StateFlow<StatsRange> = _range.asStateFlow()
 
-    private val windowMinutes: StateFlow<Int> = settings.unlockWindowMinutesFlow
-        .stateIn(viewModelScope, sharing, 5)
+    fun setRange(range: StatsRange) {
+        _range.value = range
+    }
 
-    private val sessions14 = repository
-        .repSessionsSince(RepLockRepository.startOfDaysAgoMillis(14))
-    private val unlocks14 = repository
-        .unlockEventsSince(RepLockRepository.startOfDaysAgoMillis(14))
+    /** History is loaded for two times the longest range so the previous period gives the delta. */
+    private val sessions = repository.repSessionsSince(RepLockRepository.startOfDaysAgoMillis(HISTORY_DAYS))
+    private val unlocks = repository.unlockEventsSince(RepLockRepository.startOfDaysAgoMillis(HISTORY_DAYS))
+    private val windowMinutes = settings.unlockWindowMinutesFlow
 
-    /** Reps per day, last 14 days (oldest first). */
-    val repsLast14: StateFlow<List<Int>> = sessions14
-        .map { list -> bucketByDay(list.map { it.timestamp to it.reps }, 14) }
-        .stateIn(viewModelScope, sharing, emptyList())
+    val ui: StateFlow<StatsUi> = combine(sessions, unlocks, _range, windowMinutes) { s, u, range, window ->
+        val n = range.days
+        val repsBuckets = bucketByDay(s.map { it.timestamp to it.reps }, 2 * n)
+        val unlockBuckets = bucketByDay(u.map { it.timestamp to 1 }, 2 * n)
 
-    /** Unlocks per day, last 14 days (oldest first). */
-    val unlocksLast14: StateFlow<List<Int>> = unlocks14
-        .map { list -> bucketByDay(list.map { it.timestamp to 1 }, 14) }
-        .stateIn(viewModelScope, sharing, emptyList())
+        val repsCurrent = repsBuckets.takeLast(n)
+        val repsPrevious = repsBuckets.take(n)
+        val unlocksCurrent = unlockBuckets.takeLast(n)
+        val unlocksPrevious = unlockBuckets.take(n)
 
-    val repsLast7: StateFlow<List<Int>> = repsLast14
-        .map { it.takeLast(7) }
-        .stateIn(viewModelScope, sharing, emptyList())
+        StatsUi(
+            range = range,
+            reps = repsCurrent.sum(),
+            repsDelta = repsCurrent.sum() - repsPrevious.sum(),
+            minutesEarned = unlocksCurrent.sum() * window,
+            minutesDelta = (unlocksCurrent.sum() - unlocksPrevious.sum()) * window,
+            repSeries = repsCurrent,
+            unlockSeries = unlocksCurrent,
+            last7Reps = repsBuckets.takeLast(7),
+        )
+    }.stateIn(viewModelScope, sharing, StatsUi())
 
-    val unlocksLast7: StateFlow<List<Int>> = unlocksLast14
-        .map { it.takeLast(7) }
-        .stateIn(viewModelScope, sharing, emptyList())
-
-    /** 1 on days with any rep activity, else 0 — the streak sparkline. */
-    val activeDaysLast7: StateFlow<List<Int>> = repsLast7
-        .map { days -> days.map { if (it > 0) 1 else 0 } }
-        .stateIn(viewModelScope, sharing, emptyList())
-
-    private val _streak = MutableStateFlow(0)
-    val streak: StateFlow<Int> = _streak
-
-    /** Minutes of screen time "earned back" = unlocks × unlock window. */
-    val minutesEarned: StateFlow<Int> = combine(totalUnlocks, windowMinutes) { unlocks, minutes ->
-        unlocks * minutes
-    }.stateIn(viewModelScope, sharing, 0)
-
-    init {
-        viewModelScope.launch {
-            _streak.value = repository.currentStreakDays()
-        }
+    companion object {
+        const val HISTORY_DAYS = 180
     }
 }

@@ -1,12 +1,11 @@
 package com.replock.ui.home
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,17 +14,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -35,240 +33,304 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.replock.ui.components.AppIconImage
 import com.replock.ui.components.GlassCard
-import com.replock.ui.components.MiniRing
+import com.replock.ui.components.GlassSurface
 import com.replock.ui.components.PillBadge
-import com.replock.ui.components.StatCard
+import com.replock.ui.components.ProgressRing
+import com.replock.ui.components.Sparkline
 import com.replock.ui.theme.ElectricGreen
-import com.replock.ui.theme.LockedRed
 import com.replock.ui.theme.PremiumGold
 import com.replock.ui.theme.RepBlack
 import com.replock.ui.theme.RepGray
-import com.replock.util.PermissionUtils
+import com.replock.ui.theme.RepWhite
 import com.replock.util.formatUnlockWindow
+import kotlin.math.roundToInt
+
+/** Free-tier unlock allowance per day (shown as "x/3" on the ring). */
+private const val FREE_UNLOCKS_PER_DAY = 3
 
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = viewModel(),
     onOpenAppPicker: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
-    onOpenStats: () -> Unit = {},
     onOpenPaywall: () -> Unit = {},
 ) {
-    val context = LocalContext.current
     val blockingEnabled by viewModel.blockingEnabled.collectAsState()
     val repsToday by viewModel.repsToday.collectAsState()
     val unlocksToday by viewModel.unlocksToday.collectAsState()
     val isPro by viewModel.isPro.collectAsState()
-    val blockedCount by viewModel.enabledBlockedCount.collectAsState()
     val windowMinutes by viewModel.unlockWindowMinutes.collectAsState()
+    val repTarget by viewModel.repTarget.collectAsState()
     val repsLast7 by viewModel.repsLast7.collectAsState()
+    val blockedPackages by viewModel.blockedPackages.collectAsState()
 
-    val hasCamera = ContextCompat.checkSelfPermission(
-        context, Manifest.permission.CAMERA
-    ) == PackageManager.PERMISSION_GRANTED
-    val hasUsage = PermissionUtils.hasUsageStatsAccess(context)
-    val hasOverlay = PermissionUtils.hasOverlayPermission(context)
-    val hasNotifications = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-        ContextCompat.checkSelfPermission(
-            context, Manifest.permission.POST_NOTIFICATIONS
-        ) == PackageManager.PERMISSION_GRANTED
+    val yesterdayReps = repsLast7.getOrNull(repsLast7.size - 2) ?: 0
+    val delta = repsToday - yesterdayReps
+    val deltaText = when {
+        repsLast7.size < 2 -> "Start your first set"
+        delta > 0 -> "+$delta vs yesterday"
+        delta < 0 -> "$delta vs yesterday"
+        else -> "Same as yesterday"
+    }
+    val goalFraction = repsToday.toFloat() / repTarget.coerceAtLeast(1)
+    val goalPercent = (goalFraction.coerceIn(0f, 1f) * 100).roundToInt()
+    val minutesEarned = unlocksToday * windowMinutes
 
-    Column(
-        Modifier
+    LazyColumn(
+        modifier = Modifier
             .fillMaxSize()
-            .background(RepBlack)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .background(RepBlack),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        // Header: wordmark + premium link
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                "REPLOCK",
-                color = ElectricGreen,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Black,
-                modifier = Modifier.weight(1f),
-            )
-            Text(
-                if (isPro) "Pro member" else "Premium status",
-                color = if (isPro) PremiumGold else RepGray,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier
-                    .clickable(onClick = onOpenPaywall)
-                    .padding(vertical = 6.dp, horizontal = 4.dp),
-            )
-        }
-
-        // Status card: big on/off state + switch
-        GlassCard(Modifier.fillMaxWidth()) {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+        item {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Filled.Star,
+                            contentDescription = null,
+                            tint = PremiumGold,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text("REP", color = RepWhite, fontSize = 26.sp, fontWeight = FontWeight.Black)
+                        Text("LOCK", color = ElectricGreen, fontSize = 26.sp, fontWeight = FontWeight.Black)
+                    }
                     Text(
-                        text = if (blockingEnabled) "BLOCKING ACTIVE" else "BLOCKING PAUSED",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Black,
-                        color = if (blockingEnabled) ElectricGreen else LockedRed,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = if (blockingEnabled) "Blocked apps are locked" else "Blocked apps are open",
+                        "FOCUS · EARN · GROW",
                         color = RepGray,
-                        fontSize = 14.sp,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 2.sp,
                     )
                 }
-                Switch(
-                    checked = blockingEnabled,
-                    onCheckedChange = { viewModel.setBlockingEnabled(it) },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = RepBlack,
-                        checkedTrackColor = ElectricGreen,
-                        uncheckedTrackColor = Color(0xFF2A2A2A),
-                    ),
-                )
+                Box(
+                    Modifier
+                        .size(44.dp)
+                        .background(GlassSurface, CircleShape)
+                        .clickable(onClick = onOpenSettings),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Filled.Person, contentDescription = "Settings", tint = ElectricGreen)
+                }
             }
         }
 
-        // Permissions with status pills
-        GlassCard(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(18.dp)) {
-                Text("Permissions", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 16.sp)
-                Spacer(Modifier.height(10.dp))
-                PermissionRow("Camera", hasCamera)
-                PermissionRow("Usage access", hasUsage)
-                PermissionRow("Draw over apps", hasOverlay)
-                PermissionRow("Notifications", hasNotifications)
-            }
-        }
-
-        // Today: reps (sparkline) + unlocks (ring)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            StatCard(
-                label = "Reps today",
-                value = "$repsToday",
-                modifier = Modifier.weight(1f),
-                sparkline = repsLast7,
-            )
-            GlassCard(Modifier.weight(1f)) {
-                Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+        item {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Row(
+                    Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        Modifier
+                            .size(46.dp)
+                            .background(ElectricGreen.copy(alpha = 0.14f), CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Filled.Shield, contentDescription = null, tint = ElectricGreen)
+                    }
+                    Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
-                            if (isPro) "$unlocksToday" else "$unlocksToday/3",
-                            fontSize = 30.sp,
-                            fontWeight = FontWeight.Black,
-                            color = ElectricGreen,
+                            if (blockingEnabled) "Blocking Active" else "Blocking Paused",
+                            color = RepWhite,
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
                         )
-                        Spacer(Modifier.height(2.dp))
                         Text(
-                            if (isPro) "Unlocks · Pro" else "Unlocks today",
+                            if (blockingEnabled) "Distractions are locked. Keep going!" else "Turn blocking on to start earning",
                             color = RepGray,
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                         )
                     }
-                    MiniRing(
-                        progress = if (isPro) 1f else unlocksToday / 3f,
-                        modifier = Modifier.size(44.dp),
+                    Switch(
+                        checked = blockingEnabled,
+                        onCheckedChange = viewModel::setBlockingEnabled,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = RepBlack,
+                            checkedTrackColor = ElectricGreen,
+                            uncheckedTrackColor = GlassSurface,
+                        ),
                     )
                 }
             }
         }
 
-        // Blocklist
-        GlassCard(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(18.dp)) {
-                Text("Blocked apps", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 16.sp)
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    "$blockedCount app(s) on your blocklist · unlock for ${formatUnlockWindow(windowMinutes)}",
-                    color = RepGray,
-                    fontSize = 13.sp,
-                )
-                Spacer(Modifier.height(14.dp))
-                Button(
-                    onClick = onOpenAppPicker,
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = RoundedCornerShape(50),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = ElectricGreen,
-                        contentColor = RepBlack,
-                    ),
+        item {
+            Box(Modifier.fillMaxWidth().height(230.dp), contentAlignment = Alignment.Center) {
+                val unlockFraction = if (isPro) 1f else unlocksToday.toFloat() / FREE_UNLOCKS_PER_DAY
+                ProgressRing(
+                    progress = unlockFraction,
+                    modifier = Modifier.size(210.dp),
+                    strokeWidth = 12.dp,
                 ) {
-                    Icon(Icons.Filled.Block, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Manage blocklist", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Filled.Lock, contentDescription = null, tint = ElectricGreen, modifier = Modifier.size(22.dp))
+                        Text(
+                            if (isPro) "$unlocksToday" else "$unlocksToday/$FREE_UNLOCKS_PER_DAY",
+                            color = RepWhite,
+                            fontSize = 40.sp,
+                            fontWeight = FontWeight.Black,
+                        )
+                        Text(
+                            if (isPro) "UNLOCKS · PRO" else "UNLOCKS",
+                            color = RepGray,
+                            fontSize = 11.sp,
+                            letterSpacing = 1.5.sp,
+                        )
+                    }
                 }
             }
         }
 
-        // How it works
-        GlassCard(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(18.dp)) {
-                Text("How it works", fontWeight = FontWeight.Bold, color = ElectricGreen, fontSize = 16.sp)
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    "1. Add apps to your blocklist.\n" +
-                        "2. Open a blocked app — RepLock locks it.\n" +
-                        "3. Do your reps in front of the front camera.\n" +
-                        "4. The app unlocks for ${formatUnlockWindow(windowMinutes)}, then locks again.",
-                    color = RepGray,
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp,
-                )
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                GlassCard(Modifier.weight(1f)) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("REPS TODAY", color = RepGray, fontSize = 11.sp, letterSpacing = 1.sp)
+                        Text(
+                            "$repsToday",
+                            color = ElectricGreen,
+                            fontSize = 34.sp,
+                            fontWeight = FontWeight.Black,
+                        )
+                        Text(deltaText, color = RepGray, fontSize = 11.sp)
+                        Spacer(Modifier.height(8.dp))
+                        Sparkline(
+                            values = repsLast7,
+                            modifier = Modifier.fillMaxWidth().height(44.dp),
+                        )
+                    }
+                }
+                GlassCard(Modifier.weight(1f)) {
+                    Column(
+                        Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        ProgressRing(
+                            progress = goalFraction,
+                            modifier = Modifier.size(84.dp),
+                            strokeWidth = 8.dp,
+                        ) {
+                            Text("$goalPercent%", color = RepWhite, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            "${formatUnlockWindow(minutesEarned)} earned",
+                            color = ElectricGreen,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            textAlign = TextAlign.Center,
+                        )
+                        Text(
+                            "of $repTarget reps goal",
+                            color = RepGray,
+                            fontSize = 11.sp,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
             }
         }
 
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            OutlinedButton(
-                onClick = onOpenStats,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(50),
-            ) {
-                Text("Stats")
-            }
-            OutlinedButton(
-                onClick = onOpenSettings,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(50),
-            ) {
-                Text("Settings")
+        item {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "Blocked Apps",
+                            color = RepWhite,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Box(
+                            Modifier
+                                .size(34.dp)
+                                .background(ElectricGreen, CircleShape)
+                                .clickable(onClick = onOpenAppPicker),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(Icons.Filled.Add, contentDescription = "Add app", tint = RepBlack)
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    if (blockedPackages.isEmpty()) {
+                        Text(
+                            "Nothing blocked yet. Tap + to choose apps.",
+                            color = RepGray,
+                            fontSize = 12.sp,
+                        )
+                    } else {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            blockedPackages.take(4).forEach { packageName ->
+                                AppIconImage(packageName, size = 48.dp)
+                            }
+                        }
+                    }
+                }
             }
         }
-        Spacer(Modifier.height(8.dp))
-    }
-}
 
-@Composable
-private fun PermissionRow(label: String, granted: Boolean) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            if (granted) Icons.Filled.CheckCircle else Icons.Filled.Error,
-            null,
-            tint = if (granted) ElectricGreen else LockedRed,
-            modifier = Modifier.size(20.dp),
-        )
-        Spacer(Modifier.width(10.dp))
-        Text(label, color = Color.White, modifier = Modifier.weight(1f))
-        PillBadge(
-            text = if (granted) "ACTIVE" else "MISSING",
-            color = if (granted) ElectricGreen else LockedRed,
-        )
+        item {
+            GlassCard(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onOpenAppPicker),
+            ) {
+                Row(
+                    Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        Modifier
+                            .size(46.dp)
+                            .background(ElectricGreen.copy(alpha = 0.14f), CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Filled.Lock, contentDescription = null, tint = ElectricGreen)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Manage Blocklist", color = ElectricGreen, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            "${blockedPackages.size} app(s) locked behind your reps",
+                            color = RepGray,
+                            fontSize = 12.sp,
+                        )
+                    }
+                    Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = RepGray)
+                }
+            }
+        }
+
+        if (!isPro) {
+            item {
+                GlassCard(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onOpenPaywall),
+                ) {
+                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "Free plan · $FREE_UNLOCKS_PER_DAY unlocks a day, 1 app",
+                            color = RepGray,
+                            fontSize = 12.sp,
+                            modifier = Modifier.weight(1f),
+                        )
+                        PillBadge("GO PRO", PremiumGold)
+                    }
+                }
+            }
+        }
     }
 }

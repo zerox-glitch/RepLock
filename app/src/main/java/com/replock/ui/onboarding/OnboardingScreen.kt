@@ -1,5 +1,7 @@
 package com.replock.ui.onboarding
 
+import androidx.compose.material.icons.filled.FitnessCenter
+import com.replock.ui.components.HourglassHero
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -409,282 +411,89 @@ private fun OnboardingPage(
 private fun WelcomePage(onNext: () -> Unit) {
     OnboardingPage(
         body = {
-            GlowHero(size = 210.dp) {
-                ExerciseDemo(ExerciseMode.Pushups, Modifier.size(190.dp))
-            }
-            Spacer(Modifier.height(16.dp))
-            Text(
-                "Earn your screen time",
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Black,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-                lineHeight = 36.sp,
-            )
-            Spacer(Modifier.height(10.dp))
-            Text(
-                "RepLock locks the apps that eat your day. Do a few reps on camera and they " +
-                    "open again, for as long as you choose (up to 3 hours).",
-                color = RepGray,
-                fontSize = 15.sp,
-                textAlign = TextAlign.Center,
-                lineHeight = 21.sp,
-            )
-            Spacer(Modifier.height(18.dp))
-            FeatureRow(Icons.Filled.Lock, "Pick the apps to lock", "Social, games, anything that steals focus.")
-            Spacer(Modifier.height(10.dp))
-            FeatureRow(Icons.Filled.Videocam, "Count reps on camera", "On-device pose detection. No video leaves the phone.")
-            Spacer(Modifier.height(10.dp))
-            FeatureRow(Icons.Filled.LockOpen, "Earn a timed unlock", "Pick the window in Settings, from 1 minute to 3 hours.")
-        },
-        actions = {
-            BigButton(label = "Get started", onClick = onNext)
-            Spacer(Modifier.height(8.dp))
-            Text("Takes about a minute", color = RepGray, fontSize = 12.sp)
-        },
-    )
-}
-
-@Composable
-private fun PermissionPage(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    bullets: List<String>,
-    granted: Boolean,
-    primaryLabel: String,
-    onPrimary: () -> Unit,
-    onNext: () -> Unit,
-    nextLabel: String,
-    nextEnabled: Boolean,
-    secondaryLabel: String? = null,
-    onSecondary: (() -> Unit)? = null,
-    footnote: String? = null,
-) {
-    val accent = if (granted) ElectricGreen else PremiumGold
-    OnboardingPage(
-        body = {
-            GlowHero(size = 170.dp, color = accent) {
-                Box(
-                    Modifier
-                        .size(100.dp)
-                        .background(GlassSurface, CircleShape)
-                        .border(1.dp, GlassBorder, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(44.dp))
-                }
-            }
-            Spacer(Modifier.height(14.dp))
-            PillBadge(
-                text = if (granted) "GRANTED" else "NEEDS ACCESS",
-                color = accent,
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                title,
-                fontSize = 26.sp,
-                fontWeight = FontWeight.Black,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                subtitle,
-                color = RepGray,
-                fontSize = 14.sp,
-                textAlign = TextAlign.Center,
-                lineHeight = 20.sp,
-            )
-            Spacer(Modifier.height(16.dp))
-            GlassCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
-                    bullets.forEach { BulletRow(it) }
-                }
-            }
-        },
-        actions = {
-            if (footnote != null && !granted) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
                 Text(
-                    footnote,
-                    color = RepGray,
-                    fontSize = 12.sp,
-                    textAlign = TextAlign.Center,
+                    "EARN YOUR",
+                    color = Color.White,
+                    fontSize = 42.sp,
+                    fontWeight = FontWeight.Black,
+                    lineHeight = 44.sp,
+                    textAlign = TextAlign.Start,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    "SCREEN TIME",
+                    color = ElectricGreen,
+                    fontSize = 42.sp,
+                    fontWeight = FontWeight.Black,
+                    lineHeight = 44.sp,
+                    textAlign = TextAlign.Start,
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(10.dp))
-            }
-            BigButton(
-                label = if (granted) "Granted" else primaryLabel,
-                onClick = onPrimary,
-                enabled = !granted,
-            )
-            if (!granted && secondaryLabel != null && onSecondary != null) {
-                TextButton(onClick = onSecondary) {
-                    Text(secondaryLabel, color = RepGray)
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            BigButton(
-                label = nextLabel,
-                onClick = onNext,
-                enabled = nextEnabled,
-                color = if (nextEnabled && granted) ElectricGreen else Color.White.copy(alpha = 0.10f),
-                contentColor = if (nextEnabled && granted) RepBlack else Color.White,
-            )
-        },
-    )
-}
-
-@Composable
-private fun DonePage(
-    cameraOk: Boolean,
-    usageOk: Boolean,
-    overlayOk: Boolean,
-    notificationsOk: Boolean,
-    notificationsRequired: Boolean,
-    onFinish: () -> Unit,
-) {
-    val allRequiredGranted = cameraOk && usageOk && overlayOk
-    val accent = if (allRequiredGranted) ElectricGreen else PremiumGold
-    OnboardingPage(
-        body = {
-            GlowHero(size = 170.dp, color = accent) {
-                Icon(
-                    if (allRequiredGranted) Icons.Filled.CheckCircle else Icons.Filled.Warning,
-                    contentDescription = null,
-                    tint = accent,
-                    modifier = Modifier.size(84.dp),
+                Text(
+                    "Less distractions.",
+                    color = Color.White,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Start,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    "More progress.",
+                    color = RepGray,
+                    fontSize = 17.sp,
+                    textAlign = TextAlign.Start,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
-            Spacer(Modifier.height(12.dp))
-            Text(
-                if (allRequiredGranted) "You're all set" else "Almost there",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Black,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                if (allRequiredGranted) {
-                    "Next, pick the apps you want to lock. Blocking starts as soon as you finish."
-                } else {
-                    "Some permissions are still missing. Blocking won't work until they're on. " +
-                        "You can fix them later in Settings."
-                },
-                color = RepGray,
-                fontSize = 14.sp,
-                textAlign = TextAlign.Center,
-                lineHeight = 20.sp,
-            )
-            Spacer(Modifier.height(16.dp))
-            GlassCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
-                    ChecklistRow("Camera", cameraOk)
-                    ChecklistRow("Usage access", usageOk)
-                    ChecklistRow("Display over apps", overlayOk)
-                    if (notificationsRequired) ChecklistRow("Notifications", notificationsOk)
-                }
+            Spacer(Modifier.height(8.dp))
+            HourglassHero(Modifier.fillMaxWidth().height(260.dp))
+            Spacer(Modifier.height(4.dp))
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                StepBadge("1", "Pick your apps", Icons.Filled.Lock)
+                StepBadge("2", "Do your reps", Icons.Filled.FitnessCenter)
+                StepBadge("3", "Earn screen time", Icons.Filled.LockOpen)
             }
         },
         actions = {
-            BigButton(label = "Start blocking", onClick = onFinish)
+            BigButton(label = "Get Started  \u2192", onClick = onNext)
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "Your focus = Your power",
+                color = RepGray,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+            )
         },
     )
 }
 
-// ---------------------------------------------------------------------------
-// Pieces
-// ---------------------------------------------------------------------------
-
-/** Soft radial glow behind a hero element. */
 @Composable
-private fun GlowHero(
-    size: Dp,
-    color: Color = ElectricGreen,
-    content: @Composable () -> Unit,
-) {
-    Box(
-        Modifier
-            .size(size)
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(color.copy(alpha = 0.30f), Color.Transparent),
-                    center = Offset.Unspecified,
-                    radius = 420f,
-                ),
-                CircleShape,
-            ),
-        contentAlignment = Alignment.Center,
+private fun StepBadge(index: String, label: String, icon: ImageVector) {
+    Column(
+        Modifier.width(104.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        content()
-    }
-}
-
-@Composable
-private fun FeatureRow(icon: ImageVector, title: String, subtitle: String) {
-    GlassCard(Modifier.fillMaxWidth()) {
-        Row(
-            Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Box(
+            Modifier
+                .size(58.dp)
+                .background(ElectricGreen.copy(alpha = 0.12f), CircleShape)
+                .border(1.dp, ElectricGreen.copy(alpha = 0.4f), CircleShape),
+            contentAlignment = Alignment.Center,
         ) {
-            Box(
-                Modifier
-                    .size(42.dp)
-                    .background(ElectricGreen.copy(alpha = 0.14f), CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(icon, contentDescription = null, tint = ElectricGreen, modifier = Modifier.size(20.dp))
-            }
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text(title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Text(subtitle, color = RepGray, fontSize = 13.sp, lineHeight = 17.sp)
-            }
+            Icon(icon, contentDescription = null, tint = ElectricGreen, modifier = Modifier.size(24.dp))
         }
-    }
-}
-
-@Composable
-private fun BulletRow(text: String) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(vertical = 5.dp),
-        verticalAlignment = Alignment.Top,
-    ) {
-        Icon(
-            Icons.Filled.Check,
-            contentDescription = null,
-            tint = ElectricGreen,
-            modifier = Modifier
-                .size(18.dp)
-                .padding(top = 1.dp),
-        )
-        Spacer(Modifier.width(10.dp))
-        Text(text, color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp, lineHeight = 19.sp)
-    }
-}
-
-@Composable
-private fun ChecklistRow(label: String, granted: Boolean) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            if (granted) Icons.Filled.CheckCircle else Icons.Filled.Warning,
-            contentDescription = null,
-            tint = if (granted) ElectricGreen else LockedRed,
-            modifier = Modifier.size(20.dp),
-        )
-        Spacer(Modifier.width(10.dp))
-        Text(label, color = Color.White, modifier = Modifier.weight(1f))
-        PillBadge(
-            text = if (granted) "ACTIVE" else "MISSING",
-            color = if (granted) ElectricGreen else LockedRed,
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "$index. $label",
+            color = Color.White,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
         )
     }
 }

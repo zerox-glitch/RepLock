@@ -3,7 +3,9 @@ package com.replock.ui.components
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -102,4 +104,30 @@ private fun smoothPath(points: List<Offset>): Path {
         path.cubicTo(midX, prev.y, midX, cur.y, cur.x, cur.y)
     }
     return path
+}
+
+/** Vertical bar chart; the last bar (today) is drawn at full strength, earlier bars dimmed. */
+@Composable
+fun BarChart(
+    values: List<Int>,
+    modifier: Modifier = Modifier,
+    color: Color = ElectricGreen,
+) {
+    Canvas(modifier) {
+        if (values.isEmpty()) return@Canvas
+        val max = (values.maxOrNull() ?: 0).coerceAtLeast(1).toFloat()
+        val gap = 5.dp.toPx()
+        val barWidth = (size.width - gap * (values.size - 1)) / values.size
+        val minHeight = 4.dp.toPx()
+        values.forEachIndexed { index, value ->
+            val height = ((value / max) * size.height).coerceAtLeast(minHeight)
+            val x = index * (barWidth + gap)
+            drawRoundRect(
+                color = if (index == values.lastIndex) color else color.copy(alpha = 0.35f),
+                topLeft = Offset(x, size.height - height),
+                size = Size(barWidth, height),
+                cornerRadius = CornerRadius(4.dp.toPx()),
+            )
+        }
+    }
 }

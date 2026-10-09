@@ -11,6 +11,9 @@ val RepSurfaceVariant = Color(0xFF1E1E1E)
 val RepGray = Color(0xFF9A9A9A)
 val RepWhite = Color(0xFFFFFFFF)
 
+/** Secondary chart series colour (activity / unlocks). */
+val ChartBlue = Color(0xFF4FA3FF)
+
 /** Premium accent (PRO badges, paywall highlights). */
 val PremiumGold = Color(0xFFFFC857)
 

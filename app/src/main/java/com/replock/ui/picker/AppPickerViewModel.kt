@@ -2,10 +2,12 @@ package com.replock.ui.picker
 
 import android.app.Application
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.replock.RepLockApp
 import com.replock.data.entity.BlockedAppEntity
+import com.replock.data.model.AppCategory
 import com.replock.data.model.InstalledApp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -46,6 +48,7 @@ class AppPickerViewModel(application: Application) : AndroidViewModel(applicatio
                     InstalledApp(
                         packageName = it.activityInfo.packageName,
                         label = it.loadLabel(packageManager).toString(),
+                        category = categoryOf(it.activityInfo.applicationInfo.category),
                     )
                 }
                 .filter { it.packageName != getApplication<Application>().packageName }
@@ -68,5 +71,13 @@ class AppPickerViewModel(application: Application) : AndroidViewModel(applicatio
 
     companion object {
         const val FREE_BLOCKED_APPS = 1
+
+        /** Maps Android's app category to the three buckets shown in the picker. */
+        fun categoryOf(category: Int): AppCategory = when (category) {
+            ApplicationInfo.CATEGORY_SOCIAL, ApplicationInfo.CATEGORY_NEWS -> AppCategory.Social
+            ApplicationInfo.CATEGORY_VIDEO, ApplicationInfo.CATEGORY_AUDIO,
+            ApplicationInfo.CATEGORY_GAME, ApplicationInfo.CATEGORY_IMAGE -> AppCategory.Entertainment
+            else -> AppCategory.Other
+        }
     }
 }
