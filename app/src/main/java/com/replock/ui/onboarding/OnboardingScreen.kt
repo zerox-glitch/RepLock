@@ -55,6 +55,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.replock.data.SettingsDataStore
+import com.replock.service.LockMonitorService
 import com.replock.ui.theme.ElectricGreen
 import com.replock.ui.theme.LockedRed
 import com.replock.ui.theme.RepBlack
@@ -220,7 +221,18 @@ fun OnboardingScreen(settings: SettingsDataStore) {
                         OnboardingStep.Done -> DoneStep(
                             allGranted = hasCameraPermission && hasUsageStats && hasOverlay,
                             onFinish = {
-                                scope.launch { settings.setOnboardingDone(true) }
+                                scope.launch {
+                                    settings.setOnboardingDone(true)
+                                    // Permissions were just granted — start blocking
+                                    // right away so the service is running the moment
+                                    // the user lands on Home.
+                                    if (PermissionUtils.hasAllBlockingPermissions(context)) {
+                                        ContextCompat.startForegroundService(
+                                            context,
+                                            Intent(context, LockMonitorService::class.java),
+                                        )
+                                    }
+                                }
                             },
                         )
                     }

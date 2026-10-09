@@ -37,7 +37,7 @@ class SettingsDataStore(context: Context) {
         const val DEFAULT_UNLOCK_WINDOW_MINUTES = 5
     }
 
-    val onboardingDoneFlow: Flow<Boolean?> = dataStore.data.map { it[ONBOARDING_DONE] }
+    val onboardingDoneFlow: Flow<Boolean> = dataStore.data.map { it[ONBOARDING_DONE] ?: false }
     val repTargetFlow: Flow<Int> = dataStore.data.map { it[REP_TARGET] ?: DEFAULT_REP_TARGET }
     val unlockWindowMinutesFlow: Flow<Int> =
         dataStore.data.map { it[UNLOCK_WINDOW_MINUTES] ?: DEFAULT_UNLOCK_WINDOW_MINUTES }
