@@ -54,6 +54,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
@@ -78,6 +79,7 @@ import com.replock.ui.theme.RepLockTheme
 import com.replock.ui.theme.RepSurface
 import com.replock.ui.theme.RepSurfaceVariant
 import com.replock.util.Haptics
+import com.replock.util.formatUnlockWindow
 import kotlinx.coroutines.delay
 
 /**
@@ -128,6 +130,7 @@ private fun OverlayRoute(viewModel: OverlayViewModel, onFinished: () -> Unit) {
     val reps by viewModel.reps.collectAsState()
     val pose by viewModel.pose.collectAsState()
     val exerciseMode by viewModel.exerciseMode.collectAsState()
+    val windowMinutes by viewModel.unlockWindowMinutes.collectAsState()
 
     val hasCameraPermission = ContextCompat.checkSelfPermission(
         context, Manifest.permission.CAMERA
@@ -155,6 +158,20 @@ private fun OverlayRoute(viewModel: OverlayViewModel, onFinished: () -> Unit) {
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         if (hasCameraPermission) {
             CameraPreview(onFrame = { imageProxy -> analyzer.analyze(imageProxy) })
+            // Scrim: dim the camera feed top & bottom so the UI stays readable,
+            // keep the middle (the user's body) visible.
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.Black.copy(alpha = 0.78f),
+                            0.30f to Color.Black.copy(alpha = 0.10f),
+                            0.62f to Color.Black.copy(alpha = 0.18f),
+                            1f to Color.Black.copy(alpha = 0.85f),
+                        )
+                    )
+            )
             SkeletonCanvas(pose = pose, modifier = Modifier.fillMaxSize())
 
             if (state != OverlayState.Paywall) {
@@ -297,7 +314,7 @@ private fun OverlayRoute(viewModel: OverlayViewModel, onFinished: () -> Unit) {
                         color = ElectricGreen,
                     )
                     Text(
-                        "${viewModel.appName} is open for a limited window",
+                        "${viewModel.appName} is open for ${formatUnlockWindow(windowMinutes)}",
                         color = RepGray,
                     )
                 }
@@ -318,35 +335,34 @@ private fun CameraAngleGuide(mode: ExerciseMode) {
             Modifier.padding(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (mode == ExerciseMode.Both) {
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    ExerciseDemo(ExerciseMode.Pushups, Modifier.size(48.dp), depth = 0f, showPhone = true)
-                    ExerciseDemo(ExerciseMode.Squats, Modifier.size(48.dp), depth = 0f)
-                }
-            } else {
-                ExerciseDemo(mode, Modifier.size(48.dp), depth = 0f, showPhone = true)
+            Box(Modifier.size(60.dp), contentAlignment = Alignment.Center) {
+                // The standing figure shows the full body — the right schematic for "full body in frame".
+                val figureMode = if (mode == ExerciseMode.Both) ExerciseMode.Squats else mode
+                ExerciseDemo(figureMode, Modifier.size(60.dp), depth = 0f, showPhone = true)
             }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    "Camera angle",
+                    "CAMERA ANGLE · SIDE VIEW",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = ElectricGreen,
                 )
+                Spacer(Modifier.height(2.dp))
                 Text(
                     text = when (mode) {
                         ExerciseMode.Pushups ->
-                            "Side view: plank with your profile facing the camera. " +
+                            "Plank side-on: your profile faces the camera. " +
                                 "Phone on the floor at head height."
                         ExerciseMode.Squats ->
-                            "Side view: stand with your profile facing the camera, " +
+                            "Stand side-on: your profile faces the camera, " +
                                 "full body in frame."
                         ExerciseMode.Both ->
                             "Side view for both: full body in frame, profile facing the camera."
                     },
                     fontSize = 11.sp,
                     color = RepGray,
+                    lineHeight = 14.sp,
                 )
             }
         }
@@ -370,7 +386,7 @@ private fun DemoCard(mode: ExerciseMode) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Demo", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = RepGray)
+                Text("DEMO — WATCH THE ANGLE", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = RepGray)
                 IconButton(onClick = { visible = !visible }, modifier = Modifier.size(24.dp)) {
                     Icon(
                         if (visible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
@@ -393,7 +409,10 @@ private fun DemoCard(mode: ExerciseMode) {
                         }
                     }
                 } else {
-                    ExerciseDemo(mode, Modifier.size(96.dp))
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        ExerciseDemo(mode, Modifier.size(96.dp))
+                        Text(mode.label, fontSize = 10.sp, color = RepGray)
+                    }
                 }
             }
         }
@@ -440,15 +459,32 @@ private fun SkeletonCanvas(pose: PoseUiState, modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
+        fun pt(o: PoseAnalyzer.Point) = Offset((1f - o.x) * w, o.y * h)
         pose.skeleton.forEach { (a, b) ->
             // PreviewView mirrors the front-camera preview, so flip x to match.
+            val start = pt(a)
+            val end = pt(b)
+            drawLine(color.copy(alpha = 0.12f), start, end, strokeWidth = 18f, cap = StrokeCap.Round)
+            drawLine(color.copy(alpha = 0.20f), start, end, strokeWidth = 12f, cap = StrokeCap.Round)
             drawLine(
-                color = color,
-                start = Offset((1f - a.x) * w, a.y * h),
-                end = Offset((1f - b.x) * w, b.y * h),
+                brush = Brush.linearGradient(listOf(color.copy(alpha = 0.6f), color), start, end),
+                start = start,
+                end = end,
                 strokeWidth = 8f,
                 cap = StrokeCap.Round,
             )
+        }
+        // Joint dots at every unique endpoint.
+        val seen = HashSet<String>()
+        pose.skeleton.forEach { (a, b) ->
+            listOf(a, b).forEach { o ->
+                val key = "${(o.x * 1000).toInt()}_${(o.y * 1000).toInt()}"
+                if (seen.add(key)) {
+                    val c = pt(o)
+                    drawCircle(color.copy(alpha = 0.25f), radius = 9f, center = c)
+                    drawCircle(Color.White.copy(alpha = 0.85f), radius = 4.5f, center = c)
+                }
+            }
         }
     }
 }

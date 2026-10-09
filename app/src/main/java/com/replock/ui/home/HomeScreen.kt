@@ -48,6 +48,7 @@ import com.replock.ui.theme.RepGray
 import com.replock.ui.theme.RepSurface
 import com.replock.ui.theme.RepSurfaceVariant
 import com.replock.util.PermissionUtils
+import com.replock.util.formatUnlockWindow
 
 @Composable
 fun HomeScreen(
@@ -62,6 +63,7 @@ fun HomeScreen(
     val unlocksToday by viewModel.unlocksToday.collectAsState()
     val isPro by viewModel.isPro.collectAsState()
     val blockedCount by viewModel.enabledBlockedCount.collectAsState()
+    val windowMinutes by viewModel.unlockWindowMinutes.collectAsState()
 
     val hasCamera = ContextCompat.checkSelfPermission(
         context, Manifest.permission.CAMERA
@@ -161,8 +163,8 @@ fun HomeScreen(
                 Text(
                     "1. Add apps to your blocklist.\n" +
                         "2. Open a blocked app — RepLock locks it.\n" +
-                        "3. Do your pushups in front of the front camera.\n" +
-                        "4. The app unlocks for a few minutes, then locks again.",
+                        "3. Do your reps in front of the front camera.\n" +
+                        "4. The app unlocks for ${formatUnlockWindow(windowMinutes)}, then locks again.",
                     color = RepGray,
                     fontSize = 14.sp,
                 )

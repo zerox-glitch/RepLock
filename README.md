@@ -13,7 +13,7 @@ until you complete a set number of **verified pushups via the front camera**.
    reps in real time with a huge counter, a progress ring, and a live skeleton
    (green = good form, red = out of frame / asymmetric arms).
 4. **Hit the rep target** → the overlay dismisses and the app opens for a limited
-   window (default 5 minutes), then re-locks.
+   window (default 5 minutes, configurable up to 3 hours), then re-locks.
 
 ## Features (MVP)
 
@@ -26,7 +26,7 @@ until you complete a set number of **verified pushups via the front camera**.
   and a camera-angle guide in the overlay
 - ✅ Camera-angle guide (which side should face the camera) + looping animated demo of the exercise
 - ✅ Unlock window logic, persisted across reboots (Room)
-- ✅ Settings: rep target (default 10), unlock window (default 5 min), difficulty
+- ✅ Settings: rep target (default 10), unlock window (5 min – 3 hr), exercise mode (pushups / squats / both)
 - ✅ Stats: reps today, reps this week, streak, time earned back
 - ✅ Hardcoded paywall stub (free: 3 unlocks/day, 1 blocked app)
 - 🚧 v2: deeper stats/history (per-exercise breakdown)
@@ -52,7 +52,8 @@ until you complete a set number of **verified pushups via the front camera**.
   has its own counter; a rep from either increments the shared count).
 - The overlay shows a **camera-angle guide** (side view — profile facing the
   camera; phone placement hints) and a collapsible **animated demo** of the
-  selected exercise (stick figure looping through one rep).
+  selected exercise: a glowing figure looping through one rep with a live
+  joint-angle arc and degree readout (elbow for pushups, knee for squats).
 
 The counting logic lives in a pure, unit-tested class:
 [`app/src/main/java/com/replock/domain/RepCounter.kt`](app/src/main/java/com/replock/domain/RepCounter.kt)

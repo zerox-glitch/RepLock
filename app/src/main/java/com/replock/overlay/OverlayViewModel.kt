@@ -12,10 +12,12 @@ import com.replock.domain.RepCounter
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 enum class OverlayState { Counting, Unlocked, Paywall }
@@ -58,6 +60,10 @@ class OverlayViewModel(
 
     private val _state = MutableStateFlow(OverlayState.Counting)
     val state: StateFlow<OverlayState> = _state.asStateFlow()
+
+    /** How long a granted unlock lasts (from Settings). */
+    val unlockWindowMinutes: StateFlow<Int> = settings.unlockWindowMinutesFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsDataStore.DEFAULT_UNLOCK_WINDOW_MINUTES)
 
     /** Emitted once per counted rep — the activity turns this into a haptic tick. */
     private val _repHaptics = MutableSharedFlow<Unit>(extraBufferCapacity = 1)

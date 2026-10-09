@@ -26,6 +26,7 @@ import com.replock.ui.theme.ElectricGreen
 import com.replock.ui.theme.RepBlack
 import com.replock.ui.theme.RepGray
 import com.replock.ui.theme.RepSurface
+import com.replock.util.formatUnlockWindow
 
 @Composable
 fun StatsScreen(viewModel: StatsViewModel = viewModel()) {
@@ -70,8 +71,4 @@ fun StatsScreen(viewModel: StatsViewModel = viewModel()) {
     }
 }
 
-private fun formatMinutes(minutes: Int): String {
-    val h = minutes / 60
-    val m = minutes % 60
-    return if (h > 0) "${h}h ${m}m" else "${m}m"
-}
+private fun formatMinutes(minutes: Int): String = formatUnlockWindow(minutes)

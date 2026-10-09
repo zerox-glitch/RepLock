@@ -31,6 +31,11 @@ import com.replock.ui.theme.ElectricGreen
 import com.replock.ui.theme.RepBlack
 import com.replock.ui.theme.RepGray
 import com.replock.ui.theme.RepSurface
+import com.replock.util.formatUnlockWindow
+import kotlin.math.abs
+
+/** Unlock-window slider presets, in minutes. Max is 3 hours (180 min). */
+private val WINDOW_PRESETS = listOf(1, 2, 3, 5, 10, 15, 20, 30, 45, 60, 90, 120, 180)
 
 @Composable
 fun SettingsScreen(
@@ -68,18 +73,34 @@ fun SettingsScreen(
             }
         }
 
-        // Unlock window
+        // Unlock window (up to 3 hours)
         Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = RepSurface)) {
             Column(Modifier.padding(16.dp)) {
                 Text("Unlock window", color = Color.White, fontWeight = FontWeight.Bold)
-                Text("How long an app stays unlocked after you finish your reps", color = RepGray, fontSize = 13.sp)
+                Text(
+                    "How long an app stays unlocked after you finish your reps (max 3 hr)",
+                    color = RepGray,
+                    fontSize = 13.sp,
+                )
                 Spacer(Modifier.height(8.dp))
-                Text("$windowMinutes min", fontSize = 32.sp, fontWeight = FontWeight.Black, color = ElectricGreen)
+                Text(
+                    formatUnlockWindow(windowMinutes),
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Black,
+                    color = ElectricGreen,
+                )
+                val windowIndex = WINDOW_PRESETS.indices
+                    .minByOrNull { abs(WINDOW_PRESETS[it] - windowMinutes) }
+                    ?: 0
                 Slider(
-                    value = windowMinutes.toFloat(),
-                    onValueChange = { viewModel.setUnlockWindowMinutes(it.toInt()) },
-                    valueRange = 1f..30f,
-                    steps = 28, // 1, 2, 3, ... 30
+                    value = windowIndex.toFloat(),
+                    onValueChange = { index ->
+                        viewModel.setUnlockWindowMinutes(
+                            WINDOW_PRESETS[index.toInt().coerceIn(0, WINDOW_PRESETS.size - 1)]
+                        )
+                    },
+                    valueRange = 0f..(WINDOW_PRESETS.size - 1).toFloat(),
+                    steps = WINDOW_PRESETS.size - 2, // one stop per preset
                 )
             }
         }

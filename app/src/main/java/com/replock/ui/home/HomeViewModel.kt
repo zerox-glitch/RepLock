@@ -6,6 +6,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.replock.RepLockApp
+import com.replock.data.SettingsDataStore
 import com.replock.service.LockMonitorService
 import com.replock.util.PermissionUtils
 import kotlinx.coroutines.flow.SharingStarted
@@ -47,6 +48,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
     val enabledBlockedCount: StateFlow<Int> = repository.enabledBlockedCount
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+    val unlockWindowMinutes: StateFlow<Int> = settings.unlockWindowMinutesFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsDataStore.DEFAULT_UNLOCK_WINDOW_MINUTES)
 
     fun setBlockingEnabled(enabled: Boolean) {
         viewModelScope.launch {
